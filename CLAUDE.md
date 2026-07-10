@@ -113,6 +113,12 @@ JSON at `Application.persistentDataPath/colorstackrush_save.json` via
 `SaveManager`/`SaveData`: coins, high score, level, unlocked/selected skins,
 volume/mute/haptics settings, daily-reward streak and last claim date.
 
+## Git workflow
+
+This repo is pushed to `github.com/tunayolsal/my-project-1`. As you do work,
+commit regularly with clean, descriptive commit messages and push to GitHub
+so progress is never lost — don't let uncommitted work pile up locally.
+
 ## Mobile build notes
 
 - Portrait orientation; UI authored at 1080×1920, scales both ways.
