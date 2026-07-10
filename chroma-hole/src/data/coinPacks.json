@@ -1,6 +1,0 @@
-[
-  { "id": "coins_small", "productId": "com.chromahole.coins.small", "coins": 300, "priceLabel": "$0.99" },
-  { "id": "coins_medium", "productId": "com.chromahole.coins.medium", "coins": 1000, "bonus": 100, "priceLabel": "$2.99" },
-  { "id": "coins_large", "productId": "com.chromahole.coins.large", "coins": 3000, "bonus": 500, "priceLabel": "$6.99", "bestValue": true },
-  { "id": "coins_mega", "productId": "com.chromahole.coins.mega", "coins": 8000, "bonus": 2000, "priceLabel": "$14.99" }
-]
