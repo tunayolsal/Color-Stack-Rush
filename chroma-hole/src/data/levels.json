@@ -1,0 +1,747 @@
+[
+  {
+    "level": 1,
+    "activeColors": [
+      "green",
+      "purple"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 50,
+    "timeLimit": 43,
+    "spawnRate": 0.9,
+    "objectDensity": "dense",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.58,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 2,
+    "activeColors": [
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 51,
+    "timeLimit": 45,
+    "spawnRate": 0.92,
+    "objectDensity": "dense",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.57,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 3,
+    "activeColors": [
+      "purple",
+      "red"
+    ],
+    "requiredColor": "purple",
+    "targetRadius": 52,
+    "timeLimit": 44,
+    "spawnRate": 0.95,
+    "objectDensity": "dense",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.57,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 4,
+    "activeColors": [
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 53,
+    "timeLimit": 42,
+    "spawnRate": 0.97,
+    "objectDensity": "dense",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.56,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 5,
+    "activeColors": [
+      "red",
+      "blue"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 54,
+    "timeLimit": 45,
+    "spawnRate": 0.99,
+    "objectDensity": "dense",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.55,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 6,
+    "activeColors": [
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 55,
+    "timeLimit": 43,
+    "spawnRate": 1.02,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.54,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 7,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 56,
+    "timeLimit": 40,
+    "spawnRate": 1.04,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.54,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 8,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 58,
+    "timeLimit": 44,
+    "spawnRate": 1.06,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.53,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 9,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 59,
+    "timeLimit": 42,
+    "spawnRate": 1.08,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.52,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 10,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 68,
+    "timeLimit": 39,
+    "spawnRate": 1.11,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.52,
+    "movingPools": false,
+    "mega": true
+  },
+  {
+    "level": 11,
+    "activeColors": [
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 61,
+    "timeLimit": 43,
+    "spawnRate": 1.13,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.51,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 12,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 62,
+    "timeLimit": 40,
+    "spawnRate": 1.15,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.5,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 13,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 63,
+    "timeLimit": 38,
+    "spawnRate": 1.18,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.49,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 14,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "purple",
+    "targetRadius": 64,
+    "timeLimit": 41,
+    "spawnRate": 1.2,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.49,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 15,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 65,
+    "timeLimit": 39,
+    "spawnRate": 1.22,
+    "objectDensity": "medium",
+    "movingObjects": false,
+    "moveChance": 0,
+    "correctBias": 0.48,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 16,
+    "activeColors": [
+      "green",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 66,
+    "timeLimit": 36,
+    "spawnRate": 1.25,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.25,
+    "correctBias": 0.47,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 17,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 67,
+    "timeLimit": 40,
+    "spawnRate": 1.27,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.27,
+    "correctBias": 0.47,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 18,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 68,
+    "timeLimit": 38,
+    "spawnRate": 1.29,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.28,
+    "correctBias": 0.46,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 19,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 69,
+    "timeLimit": 35,
+    "spawnRate": 1.32,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.3,
+    "correctBias": 0.45,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 20,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 78,
+    "timeLimit": 39,
+    "spawnRate": 1.34,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.31,
+    "correctBias": 0.44,
+    "movingPools": false,
+    "mega": true
+  },
+  {
+    "level": 21,
+    "activeColors": [
+      "green",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 72,
+    "timeLimit": 36,
+    "spawnRate": 1.36,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.33,
+    "correctBias": 0.44,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 22,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 73,
+    "timeLimit": 34,
+    "spawnRate": 1.38,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.35,
+    "correctBias": 0.43,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 23,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "purple",
+    "targetRadius": 74,
+    "timeLimit": 37,
+    "spawnRate": 1.41,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.36,
+    "correctBias": 0.42,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 24,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 75,
+    "timeLimit": 35,
+    "spawnRate": 1.43,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.38,
+    "correctBias": 0.41,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 25,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 76,
+    "timeLimit": 33,
+    "spawnRate": 1.45,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.39,
+    "correctBias": 0.41,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 26,
+    "activeColors": [
+      "green",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "purple",
+    "targetRadius": 77,
+    "timeLimit": 36,
+    "spawnRate": 1.48,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.41,
+    "correctBias": 0.4,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 27,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 78,
+    "timeLimit": 34,
+    "spawnRate": 1.5,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.43,
+    "correctBias": 0.39,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 28,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 79,
+    "timeLimit": 31,
+    "spawnRate": 1.52,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.44,
+    "correctBias": 0.39,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 29,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "purple",
+    "targetRadius": 80,
+    "timeLimit": 35,
+    "spawnRate": 1.55,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.46,
+    "correctBias": 0.38,
+    "movingPools": false,
+    "mega": false
+  },
+  {
+    "level": 30,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 89,
+    "timeLimit": 32,
+    "spawnRate": 1.57,
+    "objectDensity": "medium",
+    "movingObjects": true,
+    "moveChance": 0.47,
+    "correctBias": 0.37,
+    "movingPools": false,
+    "mega": true
+  },
+  {
+    "level": 31,
+    "activeColors": [
+      "green",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 82,
+    "timeLimit": 30,
+    "spawnRate": 1.59,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.49,
+    "correctBias": 0.36,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 32,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 83,
+    "timeLimit": 33,
+    "spawnRate": 1.62,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.51,
+    "correctBias": 0.36,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 33,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "blue",
+    "targetRadius": 84,
+    "timeLimit": 31,
+    "spawnRate": 1.64,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.52,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 34,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 86,
+    "timeLimit": 29,
+    "spawnRate": 1.66,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.54,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 35,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "red",
+    "targetRadius": 87,
+    "timeLimit": 32,
+    "spawnRate": 1.68,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.55,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 36,
+    "activeColors": [
+      "green",
+      "purple",
+      "red",
+      "blue",
+      "yellow"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 88,
+    "timeLimit": 30,
+    "spawnRate": 1.71,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.57,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 37,
+    "activeColors": [
+      "blue",
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 89,
+    "timeLimit": 28,
+    "spawnRate": 1.73,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.59,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 38,
+    "activeColors": [
+      "purple",
+      "red",
+      "blue",
+      "yellow",
+      "green"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 90,
+    "timeLimit": 31,
+    "spawnRate": 1.75,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.6,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 39,
+    "activeColors": [
+      "yellow",
+      "green",
+      "purple",
+      "red"
+    ],
+    "requiredColor": "yellow",
+    "targetRadius": 91,
+    "timeLimit": 28,
+    "spawnRate": 1.78,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.62,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": false
+  },
+  {
+    "level": 40,
+    "activeColors": [
+      "red",
+      "blue",
+      "yellow",
+      "green",
+      "purple"
+    ],
+    "requiredColor": "green",
+    "targetRadius": 100,
+    "timeLimit": 28,
+    "spawnRate": 1.8,
+    "objectDensity": "sparse",
+    "movingObjects": true,
+    "moveChance": 0.63,
+    "correctBias": 0.35,
+    "movingPools": true,
+    "mega": true
+  }
+]

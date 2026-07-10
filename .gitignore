@@ -1,0 +1,63 @@
+# ==== Unity ====
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+sysinfo.txt
+crashlytics-build.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ==== Node / JS projects (chroma-hole, nimbalyst-local, etc.) ====
+node_modules/
+dist/
+build/
+.cache/
+*.log
+npm-debug.log*
+
+# ==== Secrets / keys — never commit ====
+.env
+.env.*
+*.keystore
+keystore/
+keystore.properties
+*.p12
+*.pfx
+*.pem
+*.key
+*.jks
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+*_secret*
+*.asc
+
+# ==== Claude Code local settings ====
+.claude/settings.local.json
+
+# ==== OS / editor cruft ====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

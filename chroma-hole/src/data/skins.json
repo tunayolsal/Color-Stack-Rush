@@ -1,0 +1,15 @@
+[
+  { "id": "void",   "name": "Void",   "price": 0,   "premium": false, "glow": "match",   "pattern": "none", "trail": "none" },
+  { "id": "ember",  "name": "Ember",  "price": 100, "premium": false, "glow": "#FF5C5C", "pattern": "none", "trail": "sparkle" },
+  { "id": "ocean",  "name": "Ocean",  "price": 100, "premium": false, "glow": "#4D96FF", "pattern": "none", "trail": "bubble" },
+  { "id": "sunny",  "name": "Sunny",  "price": 150, "premium": false, "glow": "#FFD93D", "pattern": "dots", "trail": "none" },
+  { "id": "lime",   "name": "Lime",   "price": 150, "premium": false, "glow": "#6BCB77", "pattern": "none", "trail": "sparkle" },
+  { "id": "grape",  "name": "Grape",  "price": 200, "premium": false, "glow": "#B983FF", "pattern": "ring", "trail": "none" },
+  { "id": "frost",  "name": "Frost",  "price": 250, "premium": false, "glow": "#9EE7FF", "pattern": "dots", "trail": "bubble" },
+  { "id": "neon",   "name": "Neon",   "price": 300, "premium": false, "glow": "#3DFFA2", "pattern": "ring", "trail": "sparkle" },
+  { "id": "candy",  "name": "Candy",  "price": 350, "premium": false, "glow": "#FF9DE2", "pattern": "dots", "trail": "sparkle" },
+  { "id": "gold",   "name": "Gold",   "price": 500, "premium": false, "glow": "#FFC93C", "pattern": "ring", "trail": "sparkle" },
+  { "id": "nebula", "name": "Nebula", "price": 750, "premium": false, "glow": "rainbow", "pattern": "dots", "trail": "sparkle" },
+  { "id": "summer", "name": "Summer", "price": 400, "premium": false, "glow": "#FF8C42", "pattern": "dots", "trail": "bubble", "limited": true },
+  { "id": "prism",  "name": "Prism",  "price": 0,   "premium": true,  "productId": "com.chromahole.skin.prism", "priceLabel": "$2.99", "glow": "rainbow", "pattern": "ring", "trail": "sparkle" }
+]
