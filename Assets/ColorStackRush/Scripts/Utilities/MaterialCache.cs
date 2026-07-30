@@ -47,15 +47,23 @@ namespace ColorStackRush
             return m;
         }
 
-        /// <summary>See-through material (shield bubble). Uses a legacy transparent shader for simplicity.</summary>
+        /// <summary>See-through material (shield bubble). Uses the Standard shader in
+        /// alpha-blended transparent mode — "Legacy Shaders/Transparent/Diffuse" is not
+        /// guaranteed to survive shader stripping on platforms like WebGL (it isn't in
+        /// Always Included Shaders), which caused a null-shader crash there.</summary>
         public static Material GetTransparent(Color color, float alpha = 0.3f)
         {
             var key = new Color(color.r, color.g, color.b, alpha);
             if (transparent.TryGetValue(key, out var m)) return m;
-            m = new Material(Shader.Find("Legacy Shaders/Transparent/Diffuse"))
-            {
-                color = key
-            };
+            m = new Material(StandardShader) { color = key };
+            m.SetFloat("_Mode", 3f); // Transparent
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = 3000;
             transparent[key] = m;
             return m;
         }

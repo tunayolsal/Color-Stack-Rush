@@ -1,0 +1,13 @@
+<linker>
+  <!--
+    This project builds its entire runtime hierarchy from code (GameBootstrapper) with
+    no prefabs or serialized scene references, so Unity's stripping-usage analysis (which
+    scans scenes/prefabs for referenced component types) never sees types that are only
+    ever touched via generic AddComponent<T>() calls at runtime — e.g. CapsuleCollider.
+    That caused "Can't add component because class 'CapsuleCollider' doesn't exist!" on
+    WebGL. Preserving the Physics module here guarantees UnityLinker keeps it regardless
+    of the managed stripping level.
+  -->
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all" />
+  <assembly fullname="UnityEngine.CoreModule" preserve="all" />
+</linker>

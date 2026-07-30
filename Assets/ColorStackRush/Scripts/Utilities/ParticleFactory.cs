@@ -76,8 +76,13 @@ namespace ColorStackRush
             var shape = ps.shape;
             shape.enabled = false;
 
-            // Sprites/Default supports vertex colors + alpha with no extra setup.
-            var mat = new Material(Shader.Find("Sprites/Default"));
+            // Sprites/Default supports vertex colors + alpha with no extra setup, but it
+            // isn't guaranteed to survive shader stripping on every platform (e.g. WebGL)
+            // unless explicitly added to Always Included Shaders. Fall back to the
+            // Standard shader (guaranteed present — MaterialCache depends on it) so a
+            // stripped Sprites/Default never crashes particle creation.
+            var particleShader = Shader.Find("Sprites/Default") ?? Shader.Find("Standard");
+            var mat = new Material(particleShader);
             if (texture != null) mat.mainTexture = texture;
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = mat;
