@@ -54,7 +54,13 @@ public static class ReleaseBuilder
         PlayerSettings.bundleVersion = "0.2.0";
         PlayerSettings.Android.bundleVersionCode = Mathf.Max(2, PlayerSettings.Android.bundleVersionCode);
         EditorUserBuildSettings.buildAppBundle = false;
-        Build(BuildTarget.Android, Argument("-outputPath", "Builds/Android/ColorStackRush.apk"));
+        string editorProduct = PlayerSettings.productName;
+        // Freeze the old auto-generated Android ID before changing the visible app label.
+        // Android saves use the package ID; keep the Editor product so its save path also stays stable.
+        PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android));
+        PlayerSettings.productName = "Color Stack Rush";
+        try { Build(BuildTarget.Android, Argument("-outputPath", "Builds/Android/ColorStackRush.apk")); }
+        finally { PlayerSettings.productName = editorProduct; AssetDatabase.SaveAssets(); }
     }
     [MenuItem("Tools/Color Stack Rush/Build Windows Preview")]
     public static void BuildWindows()
@@ -73,12 +79,12 @@ public static class ReleaseBuilder
         Debug.Log($"[CSR Build] {target}: {report.summary.result}; errors={report.summary.totalErrors}; size={report.summary.totalSize}");
         if (report.summary.result != BuildResult.Succeeded) throw new InvalidOperationException("Player build failed");
         File.WriteAllText(Path.ChangeExtension(output, ".build.json"), JsonUtility.ToJson(new BuildFacts {
-            target = target.ToString(), unity = Application.unityVersion, version = PlayerSettings.bundleVersion,
+            target = target.ToString(), unity = Application.unityVersion, version = PlayerSettings.bundleVersion, product = PlayerSettings.productName,
             packageId = PlayerSettings.GetApplicationIdentifier(target == BuildTarget.Android ? NamedBuildTarget.Android : NamedBuildTarget.Standalone),
-            bytes = (long)report.summary.totalSize, errors = (int)report.summary.totalErrors, seconds = (float)report.summary.totalTime.TotalSeconds,
+            bytes = new FileInfo(output).Length, buildReportBytes = (long)report.summary.totalSize, errors = (int)report.summary.totalErrors, seconds = (float)report.summary.totalTime.TotalSeconds,
             builtAtUtc = DateTime.UtcNow.ToString("o")
         }, true));
     }
-    [Serializable] class BuildFacts { public string target, unity, version, packageId, builtAtUtc; public long bytes; public int errors; public float seconds; }
+    [Serializable] class BuildFacts { public string target, unity, version, product, packageId, builtAtUtc; public long bytes, buildReportBytes; public int errors; public float seconds; }
 }
 #endif

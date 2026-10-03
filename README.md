@@ -32,7 +32,7 @@ Batch example (replace the paths with your local paths):
   -outputPath 'C:/builds/ColorStackRush.apk' -logFile 'C:/builds/android.log'
 ```
 
-Application identity is preserved to retain existing save locations. APKs use Unity's local debug signing; store publishing and release keystore setup are outside this change.
+The Android package ID and Editor product name are preserved to retain existing save locations. The Android app label is Color Stack Rush. APKs use Unity's local debug signing; store publishing and release keystore setup are outside this change.
 
 ## Tests
 
