@@ -19,7 +19,7 @@ treat them as part of this project's source tree.
 
 ## Running the game
 
-There is no CLI build/test/lint step — this is a Unity Editor project.
+Build and test CLI instructions are in README.md. ReleaseBuilder generates the Android release scene; Unity Test Runner hosts EditMode and PlayMode tests.
 
 1. Open the project in Unity `6000.3.3f1` (Unity Hub will prompt to install
    the matching editor version from `ProjectSettings/ProjectVersion.txt`).
@@ -75,10 +75,10 @@ than wiring a direct reference. Subscribers must unsubscribe in
 
 Core gameplay loop: the ball auto-runs and accelerates; a glowing ring under
 it (driven by `ColorManager`) shows the currently-required color, which
-changes every 15-20s; matching-color blocks grow the stack (= health) and
+changes at planned distance boundaries with an empty region and advance warning; matching-color blocks grow the stack (= health, capped at 32) and
 score, wrong-color blocks or obstacles shrink it; stack at zero ends the run.
 Crossing the finish gate converts remaining stack into escalating
-multiplier bonus points on the "multiplier stairs."
+additive bonus points (+10, +20, ...) on the finish stairs. Endless has no finish gate. RunConfig and RunResult keep campaign and endless records separate.
 
 **Design conventions already established in this codebase — follow them for
 new code:**
@@ -100,10 +100,10 @@ new code:**
 
 All tunables are `[SerializeField]` fields on these components (edit defaults
 in code, or on the instance at runtime in the Editor):
-- Difficulty: `PlayerController` (baseSpeed/acceleration/maxSpeed), `SpawnManager` (chances, chunk length, level length).
+- Difficulty: `PlayerController` (baseSpeed/acceleration), `RunConfig` (length/speed cap), `TrackPlanner` (patterns and introductions). `SpawnManager` handles pooling and streaming.
 - Health: `PlayerStack.startBlocks`, `PlayerCollision.obstacleDamage`.
 - Combo: `ScoreManager` (comboPerMultiplier, maxMultiplier, pointsPerBlock).
-- Color pressure: `ColorManager` (minInterval/maxInterval).
+- Color pressure: `TrackPlanner.ColorBand/WarningDistance/TransitionAfter`, with `ColorManager` following distance.
 - Power-ups: `PowerUpManager` durations (Magnet, Double Coins, Shield, Slow Motion, Lucky Box).
 - Feel: `CameraShake`, `CameraFollow`, `Juice` call sites.
 
@@ -111,18 +111,18 @@ in code, or on the instance at runtime in the Editor):
 
 JSON at `Application.persistentDataPath/colorstackrush_save.json` via
 `SaveManager`/`SaveData`: coins, high score, level, unlocked/selected skins,
-volume/mute/haptics settings, daily-reward streak and last claim date.
+volume/mute/haptics settings, daily-reward streak and last claim date. Schema v2 also holds per-level best scores/stars, endless records, tutorial, reduced motion and quality. SaveStore migrates old JSON and retains a temporary-write/backup recovery path. Tests must use isolated directories.
 
 ## Git workflow
 
-This repo is pushed to `github.com/tunayolsal/my-project-1`. As you do work,
+This repo is pushed to `github.com/tunayolsal/Color-Stack-Rush`. As you do work,
 commit regularly with clean, descriptive commit messages and push to GitHub
 so progress is never lost — don't let uncommitted work pile up locally.
 
 ## Mobile build notes
 
 - Portrait orientation; UI authored at 1080×1920, scales both ways.
-- `Application.targetFrameRate = 60`, vSync off, set in code.
+- `QualityProfile` targets 60 FPS (high) or 30 FPS (low), vSync off; real device measurements remain necessary.
 - Android release: set Scripting Backend to IL2CPP + ARM64 in Player Settings.
 - Haptics via `Handheld.Vibrate()` — swap `HapticsManager` internals for a
   richer plugin if needed.

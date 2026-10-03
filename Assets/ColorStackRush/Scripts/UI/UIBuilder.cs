@@ -19,6 +19,9 @@ namespace ColorStackRush
         {
             BuildEventSystem();
             var canvas = BuildCanvas();
+            var safe = UIFactory.CreateRect(canvas, "SafeArea");
+            safe.gameObject.AddComponent<SafeAreaPanel>();
+            canvas = safe;
 
             // Order matters: later siblings render on top.
             var hud = BuildPanel<HUDPanel>(canvas, "HUD");
@@ -45,9 +48,12 @@ namespace ColorStackRush
             var settings = BuildPanel<SettingsPanel>(canvas, "Settings");
             settings.GetComponent<SettingsPanel>().Build();
 
+            var levels = BuildPanel<LevelSelectPanel>(canvas, "Levels");
+            levels.GetComponent<LevelSelectPanel>().Build();
+
             // Router takes over visibility from here.
             var manager = gameObject.AddComponent<UIManager>();
-            manager.Init(menu, hud, pause, gameOver, victory, settings, shop, daily);
+            manager.Init(menu, hud, pause, gameOver, victory, settings, shop, daily, levels);
         }
 
         void BuildEventSystem()

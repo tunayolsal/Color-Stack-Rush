@@ -10,6 +10,17 @@ namespace ColorStackRush
     [Serializable]
     public class SaveData
     {
+        // Missing version in legacy JSON deliberately deserializes as zero.
+        public int version = 0;
+        public int[] levelScores = new int[18];
+        public int[] levelStars = new int[18];
+        public int endlessBest;
+        public float endlessDistance;
+        public bool campaignCompleted;
+        public bool tutorialCompleted;
+        public bool reducedMotion;
+        public bool lowQuality;
+
         // --- Economy / progress ---
         public int coins = 0;
         public int highScore = 0;

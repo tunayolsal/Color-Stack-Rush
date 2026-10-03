@@ -51,7 +51,8 @@ namespace ColorStackRush
             if (scoreText == null || ScoreManager.Instance == null) return;
 
             scoreText.text = ScoreManager.Instance.Score.ToString();
-            bestText.text = "BEST " + SaveManager.Data.highScore;
+            var config = GameManager.Instance.CurrentRun;
+            bestText.text = "BEST " + (config.mode == RunMode.Endless ? SaveManager.Data.endlessBest : SaveManager.Data.levelScores[config.level - 1]);
             coinsText.text = "+" + CurrencyManager.RunCoins;
 
             bool newBest = ScoreManager.Instance.IsNewBest;

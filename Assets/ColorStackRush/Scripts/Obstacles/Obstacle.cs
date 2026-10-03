@@ -12,7 +12,7 @@ namespace ColorStackRush
         [Header("Behaviour")]
         [SerializeField] ObstacleKind kind = ObstacleKind.Wall;
         [SerializeField] float spinSpeed = 130f;      // Spinner: degrees/second
-        [SerializeField] float slideAmplitude = 2.1f; // Slider: world units
+        [SerializeField] float slideAmplitude = .25f; // Slider: world units
         [SerializeField] float slideSpeed = 1.6f;     // Slider: cycles/second-ish
 
         Transform movingPart;   // bar for spinner, whole visual for slider
@@ -34,11 +34,18 @@ namespace ColorStackRush
         void OnEnable()
         {
             baseX = transform.position.x;
-            slidePhase = Random.Range(0f, Mathf.PI * 2f); // desync sliders
+            slidePhase = 0;
+            if (movingPart != null) movingPart.localRotation = Quaternion.identity;
         }
 
         /// <summary>Lets the spawner switch behaviour when reusing pooled instances.</summary>
         public void SetKind(ObstacleKind newKind) => kind = newKind;
+        public void SetupMotion(float phase)
+        {
+            slidePhase = phase;
+            baseX = transform.position.x;
+            if (movingPart != null) movingPart.localRotation = Quaternion.Euler(0, phase * Mathf.Rad2Deg, 0);
+        }
 
         void Update()
         {
@@ -55,7 +62,7 @@ namespace ColorStackRush
                 case ObstacleKind.Slider:
                     slidePhase += slideSpeed * Time.deltaTime;
                     Vector3 pos = transform.position;
-                    pos.x = baseX + Mathf.Sin(slidePhase * Mathf.PI) * slideAmplitude;
+                    pos.x = baseX + Mathf.Sin(slidePhase) * slideAmplitude;
                     transform.position = pos;
                     break;
             }

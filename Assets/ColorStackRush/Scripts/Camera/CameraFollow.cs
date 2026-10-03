@@ -62,8 +62,9 @@ namespace ColorStackRush
         /// <summary>Quick vertical camera bounce (kick up, spring back).</summary>
         public void Punch(float strength)
         {
+            if (SaveManager.Data.reducedMotion) { bounceOffset = 0; return; }
             StopAllCoroutines();
-            StartCoroutine(PunchRoutine(strength));
+            StartCoroutine(PunchRoutine(Mathf.Min(strength, .18f)));
         }
 
         IEnumerator PunchRoutine(float strength)

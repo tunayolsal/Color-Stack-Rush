@@ -27,6 +27,7 @@ namespace ColorStackRush
         void Awake()
         {
             container = new GameObject("StackBlocks").transform;
+            for (int i = 0; i < 36; i++) { var block = CreateBlock(); block.gameObject.SetActive(false); pool.Push(block); }
         }
 
         void OnEnable() => GameEvents.RunStarted += ResetStack;
@@ -57,6 +58,7 @@ namespace ColorStackRush
         /// <summary>Adds a block of the given color to the tail with a juicy pop.</summary>
         public void AddBlock(Color color)
         {
+            if (Count >= 32) return;
             Transform block = pool.Count > 0 ? pool.Pop() : CreateBlock();
             block.gameObject.SetActive(true);
             block.GetComponent<MeshRenderer>().sharedMaterial = MaterialCache.Get(color);
@@ -67,6 +69,7 @@ namespace ColorStackRush
                 : transform.position;
             block.position = tail + Vector3.back * spacing;
             block.localScale = Vector3.one * blockSize;
+            block.rotation = Quaternion.identity;
 
             segments.Add(block);
             Juice.PunchScale(block, 0.5f, 0.25f);
@@ -114,6 +117,17 @@ namespace ColorStackRush
         /// <summary>Clears the trail and grants the starting health blocks.</summary>
         void ResetStack()
         {
+            // Reclaim pending fly-off blocks before a rapid restart.
+            foreach (Transform child in container)
+            {
+                Juice.ForgetTransform(child);
+                child.gameObject.SetActive(false);
+                child.localScale = Vector3.one * blockSize;
+                child.rotation = Quaternion.identity;
+            }
+            segments.Clear();
+            pool.Clear();
+            foreach (Transform child in container) pool.Push(child);
             while (segments.Count > 0)
             {
                 Transform block = segments[segments.Count - 1];

@@ -59,13 +59,24 @@ namespace ColorStackRush
         /// <summary>Buys a skin if affordable. Auto-selects it on success.</summary>
         public bool TryBuy(int index)
         {
-            if (IsUnlocked(index)) return false;
-            if (!CurrencyManager.TrySpend(GetSkin(index).cost)) return false;
+            if (index < 0 || index >= SkinCount || IsUnlocked(index)) return false;
+            int cost = GetSkin(index).cost;
+            if (SaveManager.Data.coins < cost) return false;
+            int previousSkin = SaveManager.Data.selectedSkin;
+            SaveManager.Data.coins -= cost;
 
             SaveManager.Data.unlockedSkins.Add(index);
-            SaveManager.Save();
+            SaveManager.Data.selectedSkin = index;
+            if (!SaveManager.Save())
+            {
+                SaveManager.Data.coins += cost;
+                SaveManager.Data.unlockedSkins.Remove(index);
+                SaveManager.Data.selectedSkin = previousSkin;
+                return false;
+            }
+            GameEvents.RaiseCoinsChanged(SaveManager.Data.coins);
             AudioManager.Instance?.PlaySfx(SfxId.Buy);
-            Select(index);
+            GameEvents.RaiseSkinSelected(index);
             return true;
         }
 

@@ -336,7 +336,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8431856575c982f4e9373e16f6b95d3b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ColorStackRush.GameBootstrapper
+  m_EditorClassIdentifier: ColorStackRush.Runtime::ColorStackRush.GameBootstrapper
   shadowDistance: 45
 --- !u!4 &1555315447
 Transform:

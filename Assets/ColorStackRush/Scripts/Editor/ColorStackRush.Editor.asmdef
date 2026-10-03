@@ -1,0 +1,10 @@
+{
+  "name": "ColorStackRush.Editor",
+  "references": [
+    "ColorStackRush.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

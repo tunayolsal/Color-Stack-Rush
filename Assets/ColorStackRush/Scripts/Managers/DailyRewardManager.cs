@@ -15,6 +15,11 @@ namespace ColorStackRush
         public static readonly int[] Rewards = { 25, 50, 75, 100, 150, 200, 300 };
 
         const string DateFormat = "yyyy-MM-dd";
+        public static bool CanClaimOn(string last, DateTime today)
+        {
+            return string.IsNullOrEmpty(last) || (DateTime.TryParseExact(last, DateFormat, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var date) && today.Date > date.Date);
+        }
 
         void Awake() => Instance = this;
 
@@ -35,7 +40,7 @@ namespace ColorStackRush
             {
                 string last = SaveManager.Data.lastDailyClaim;
                 if (string.IsNullOrEmpty(last)) return true;
-                return last != DateTime.Now.ToString(DateFormat);
+                return CanClaimOn(last, DateTime.Now.Date);
             }
         }
 

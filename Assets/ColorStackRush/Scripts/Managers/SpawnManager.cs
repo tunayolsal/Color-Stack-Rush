@@ -18,24 +18,15 @@ namespace ColorStackRush
         [SerializeField] float groundTileLength = 30f;
 
         [Header("Streaming")]
-        [SerializeField] float chunkLength = 11f;
         [SerializeField] float spawnAheadDistance = 80f;
         [SerializeField] float despawnBehindDistance = 18f;
-        [SerializeField] float firstChunkZ = 18f; // clear runway at the start
 
-        [Header("Level length")]
-        [SerializeField] float baseLevelLength = 220f;
-        [SerializeField] float lengthPerLevel = 40f;
-        [SerializeField] float maxLevelLength = 600f;
 
         [Header("Finish stairs")]
         [SerializeField] int stairCount = 18;
         [SerializeField] float stairHeight = 0.45f;
         [SerializeField] float stairDepth = 1.6f;
 
-        [Header("Spawn chances")]
-        [Range(0f, 1f)] [SerializeField] float powerUpChance = 0.08f;
-        [Range(0f, 1f)] [SerializeField] float activeColorBias = 0.6f; // % of block runs matching active color
 
         // Pools
         ObjectPool blockPool, coinPool, wallPool, spinnerPool, sliderPool, powerUpPool, groundPool;
@@ -51,6 +42,9 @@ namespace ColorStackRush
         float spawnZ;
         float groundFrontZ;
         float levelLength;
+        int segmentIndex;
+        RunConfig config;
+        readonly TrackSegment segment = new TrackSegment();
         bool finishSpawned;
 
         float LaneHalf => roadWidth * 0.5f - 0.9f; // safe spawn band inside the rails
@@ -83,9 +77,10 @@ namespace ColorStackRush
                 while (!finishSpawned && spawnZ < playerZ + spawnAheadDistance)
                 {
                     // Stop a full chunk early so nothing overlaps the finish gate.
-                    if (spawnZ + chunkLength >= levelLength) { SpawnFinish(); break; }
+                    if (config.mode == RunMode.Campaign && spawnZ + TrackSegment.Length >= levelLength) { SpawnFinish(); break; }
                     SpawnChunk();
-                    spawnZ += chunkLength;
+                    spawnZ += TrackSegment.Length;
+                    segmentIndex++;
                 }
             }
 
@@ -115,11 +110,12 @@ namespace ColorStackRush
 
         void ResetStreamingState()
         {
-            spawnZ = firstChunkZ;
+            config = GameManager.Instance != null ? GameManager.Instance.CurrentRun : RunConfig.Campaign(1);
+            segmentIndex = 0;
+            spawnZ = TrackPlanner.FirstZ;
             groundFrontZ = -groundTileLength;
             finishSpawned = false;
-            levelLength = Mathf.Min(maxLevelLength,
-                baseLevelLength + (SaveManager.Data.level - 1) * lengthPerLevel);
+            levelLength = config.Length;
         }
 
         // ------------------------------------------------------------------
@@ -131,6 +127,7 @@ namespace ColorStackRush
             while (groundFrontZ < untilZ)
             {
                 var tile = groundPool.Get(new Vector3(0f, 0f, groundFrontZ + groundTileLength * 0.5f), Quaternion.identity);
+                ThemePresentation.TintGround(tile, config.Theme);
                 activeGround.Add(tile.GetComponent<PooledObject>());
                 groundFrontZ += groundTileLength;
             }
@@ -149,7 +146,6 @@ namespace ColorStackRush
                 else if (item.transform.position.z < playerZ - despawnBehindDistance)
                 {
                     item.Release();
-                    activeItems.RemoveAt(i);
                 }
             }
 
@@ -158,7 +154,6 @@ namespace ColorStackRush
                 if (activeGround[i].transform.position.z < playerZ - groundTileLength * 1.5f)
                 {
                     activeGround[i].Release();
-                    activeGround.RemoveAt(i);
                 }
             }
         }
@@ -170,108 +165,29 @@ namespace ColorStackRush
         /// <summary>Spawns one randomized gameplay pattern into [spawnZ, spawnZ + chunkLength].</summary>
         void SpawnChunk()
         {
-            int roll = Random.Range(0, 100);
-
-            if (roll < 30) SpawnBlockRun();
-            else if (roll < 52) SpawnWallWithGap();
-            else if (roll < 66) SpawnCoinRun();
-            else if (roll < 81) SpawnSpinnerPattern();
-            else SpawnSliderPattern();
-
-            if (Random.value < powerUpChance) SpawnPowerUp();
-        }
-
-        GameColor PickBlockColor()
-        {
-            if (ColorManager.Instance != null && Random.value < activeColorBias)
-                return ColorManager.Instance.ActiveColor;
-            return (GameColor)Random.Range(0, 4);
-        }
-
-        /// <summary>A run of 4 blocks, straight or drifting diagonally across the road.</summary>
-        void SpawnBlockRun()
-        {
-            GameColor color = PickBlockColor();
-            float startX = Random.Range(-LaneHalf, LaneHalf);
-            float endX = Random.value < 0.5f ? startX : Random.Range(-LaneHalf, LaneHalf);
-
-            for (int i = 0; i < 4; i++)
+            TrackPlanner.Fill(config, segmentIndex, segment);
+            if (!TrackValidator.Validate(segment, TrackPlanner.SafeX(segmentIndex - 1), config.MaxSpeed)) TrackPlanner.Fallback(segment);
+            for (int i = 0; i < segment.count; i++)
             {
-                float t = i / 3f;
-                SpawnBlock(new Vector3(Mathf.Lerp(startX, endX, t), 0f, spawnZ + 1.5f + i * 2.4f), color);
+                var item = segment.items[i];
+                var pos = new Vector3(item.x, 0, segment.startZ + item.z);
+                GameObject go = null;
+                switch (item.kind)
+                {
+                    case TrackKind.Block: SpawnBlock(pos, item.color); break;
+                    case TrackKind.Coin: go = coinPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.Wall: go = wallPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.Spinner: go = spinnerPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.Slider: go = sliderPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.PowerUp: go = powerUpPool.Get(pos, Quaternion.identity); go.GetComponent<PowerUpPickup>().Setup(item.power); break;
+                }
+                if (go != null)
+                {
+                    var obstacle = go.GetComponent<Obstacle>();
+                    if (obstacle != null) obstacle.SetupMotion(item.phase);
+                    Track(go);
+                }
             }
-        }
-
-        /// <summary>A wall across the road with one safe gap; a bonus block sits in the gap.</summary>
-        void SpawnWallWithGap()
-        {
-            float z = spawnZ + chunkLength * 0.5f;
-            float gapCenter = Random.Range(-LaneHalf + 0.6f, LaneHalf - 0.6f);
-            const float gapHalfWidth = 1.35f;
-            const float pieceWidth = 1.2f;
-
-            for (float x = -roadWidth * 0.5f + pieceWidth * 0.5f; x < roadWidth * 0.5f; x += pieceWidth)
-            {
-                if (Mathf.Abs(x - gapCenter) < gapHalfWidth) continue; // leave the gap open
-                var wall = wallPool.Get(new Vector3(x, 0f, z), Quaternion.identity);
-                Track(wall);
-            }
-
-            // Reward for threading the needle.
-            SpawnBlock(new Vector3(gapCenter, 0f, z + 2.5f), PickBlockColor());
-        }
-
-        /// <summary>A line of 5 coins, straight or gently sine-weaving.</summary>
-        void SpawnCoinRun()
-        {
-            float x = Random.Range(-LaneHalf, LaneHalf);
-            bool weave = Random.value < 0.4f;
-
-            for (int i = 0; i < 5; i++)
-            {
-                float cx = weave ? Mathf.Sin(i * 0.9f) * LaneHalf * 0.7f : x;
-                var coin = coinPool.Get(new Vector3(cx, 0f, spawnZ + 1f + i * 1.8f), Quaternion.identity);
-                Track(coin);
-            }
-        }
-
-        /// <summary>A rotating bar in the middle with tempting blocks on the edges.</summary>
-        void SpawnSpinnerPattern()
-        {
-            float z = spawnZ + chunkLength * 0.5f;
-            var spinner = spinnerPool.Get(new Vector3(Random.Range(-1f, 1f), 0f, z), Quaternion.identity);
-            Track(spinner);
-
-            GameColor color = PickBlockColor();
-            SpawnBlock(new Vector3(-LaneHalf, 0f, z + 3.5f), color);
-            SpawnBlock(new Vector3(LaneHalf, 0f, z + 3.5f), color);
-        }
-
-        /// <summary>A cube sliding across the road, followed by a short coin trail.</summary>
-        void SpawnSliderPattern()
-        {
-            float z = spawnZ + 3f;
-            var slider = sliderPool.Get(new Vector3(0f, 0f, z), Quaternion.identity);
-            Track(slider);
-
-            for (int i = 0; i < 3; i++)
-            {
-                var coin = coinPool.Get(new Vector3(0f, 0f, z + 3f + i * 1.6f), Quaternion.identity);
-                Track(coin);
-            }
-        }
-
-        void SpawnPowerUp()
-        {
-            // LuckyBox is rare; the four timed power-ups share the rest evenly.
-            PowerUpType type = Random.value < 0.12f
-                ? PowerUpType.LuckyBox
-                : (PowerUpType)Random.Range(0, 4);
-
-            var pos = new Vector3(Random.Range(-LaneHalf, LaneHalf), 0f, spawnZ + Random.Range(2f, chunkLength - 1f));
-            var pickup = powerUpPool.Get(pos, Quaternion.identity);
-            pickup.GetComponent<PowerUpPickup>().Setup(type);
-            Track(pickup);
         }
 
         void SpawnBlock(Vector3 pos, GameColor color)
@@ -281,7 +197,12 @@ namespace ColorStackRush
             Track(block);
         }
 
-        void Track(GameObject go) => activeItems.Add(go.GetComponent<PooledObject>());
+        void Track(GameObject go)
+        {
+            var item = go.GetComponent<PooledObject>();
+            if (!activeItems.Contains(item)) activeItems.Add(item);
+        }
+        void Untrack(PooledObject item) { activeItems.Remove(item); activeGround.Remove(item); }
 
         // ------------------------------------------------------------------
         //  Finish gate + multiplier stairs
@@ -330,7 +251,7 @@ namespace ColorStackRush
 
                 // Multiplier label floating above the step.
                 var label = WorldText.Create(finishRoot.transform,
-                    $"x{i + 1}", new Vector3(2.6f, top + 0.55f, stepZ), ColorPalette.UiText, 0.9f);
+                    $"+{StepValue(i)}", new Vector3(2.6f, top + 0.55f, stepZ), ColorPalette.UiText, 0.9f);
                 label.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
 
                 // Where the player's root should land when climbing this step.
@@ -347,13 +268,15 @@ namespace ColorStackRush
             templateRoot = new GameObject("Templates").transform;
             templateRoot.SetParent(transform, false);
 
-            blockPool   = new ObjectPool(BuildBlockTemplate(), transform, 24);
-            coinPool    = new ObjectPool(BuildCoinTemplate(), transform, 16);
+            blockPool   = new ObjectPool(BuildBlockTemplate(), transform, 48);
+            coinPool    = new ObjectPool(BuildCoinTemplate(), transform, 40);
             wallPool    = new ObjectPool(BuildWallTemplate(), transform, 24);
             spinnerPool = new ObjectPool(BuildSpinnerTemplate(), transform, 4);
             sliderPool  = new ObjectPool(BuildSliderTemplate(), transform, 4);
             powerUpPool = new ObjectPool(BuildPowerUpTemplate(), transform, 3);
             groundPool  = new ObjectPool(BuildGroundTemplate(), transform, 8);
+            blockPool.Released += Untrack; coinPool.Released += Untrack; wallPool.Released += Untrack;
+            spinnerPool.Released += Untrack; sliderPool.Released += Untrack; powerUpPool.Released += Untrack; groundPool.Released += Untrack;
         }
 
         GameObject NewTemplate(string name)
@@ -375,6 +298,7 @@ namespace ColorStackRush
             col.center = new Vector3(0f, 0.5f, 0f);
             col.size = new Vector3(1.1f, 1.1f, 1.1f); // slightly generous pickup
 
+            ColorSymbols.AddWorld(root.transform);
             root.AddComponent<CollectibleBlock>();
             return root;
         }
@@ -427,11 +351,11 @@ namespace ColorStackRush
             bar.transform.SetParent(root.transform, false);
             bar.transform.localPosition = new Vector3(0f, 0.55f, 0f);
             Primitives.Create(PrimitiveType.Cube, bar.transform,
-                Vector3.zero, new Vector3(4.4f, 0.45f, 0.45f), mat, "Bar");
+                Vector3.zero, new Vector3(1.4f, 0.45f, 0.45f), mat, "Bar");
 
             var col = bar.AddComponent<BoxCollider>();
             col.isTrigger = true;
-            col.size = new Vector3(4.4f, 0.45f, 0.45f);
+            col.size = new Vector3(1.4f, 0.45f, 0.45f);
 
             root.AddComponent<Obstacle>().SetKind(ObstacleKind.Spinner);
             return root;

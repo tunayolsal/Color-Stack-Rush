@@ -26,6 +26,8 @@ namespace ColorStackRush
         public void Setup(GameColor color)
         {
             BlockColor = color;
+            var symbol = transform.Find("Symbol");
+            if (symbol != null) symbol.GetComponent<MeshFilter>().sharedMesh = ColorSymbols.Shared(color);
             if (visualRenderer != null)
                 visualRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(color));
         }

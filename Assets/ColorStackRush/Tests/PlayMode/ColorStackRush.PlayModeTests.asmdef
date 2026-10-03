@@ -1,0 +1,13 @@
+{
+  "name": "ColorStackRush.PlayModeTests",
+  "references": [
+    "ColorStackRush.Runtime",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "UnityEngine.UI"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

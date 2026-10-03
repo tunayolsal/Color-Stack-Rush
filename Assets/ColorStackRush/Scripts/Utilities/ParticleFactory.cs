@@ -17,6 +17,7 @@ namespace ColorStackRush
         public static void Burst(Vector3 position, Color color, int count, float speed = 4.5f, float size = 0.3f)
         {
             EnsureSystems();
+            count = QualityProfile.ParticleCount(count);
             for (int i = 0; i < count; i++)
             {
                 Vector3 dir = Random.onUnitSphere;
@@ -34,6 +35,7 @@ namespace ColorStackRush
         public static void Confetti(Vector3 position, int count = 120)
         {
             EnsureSystems();
+            count = QualityProfile.ParticleCount(count);
             for (int i = 0; i < count; i++)
             {
                 var color = ColorPalette.Get((GameColor)Random.Range(0, 4));

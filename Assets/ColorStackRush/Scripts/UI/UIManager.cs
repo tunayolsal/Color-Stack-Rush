@@ -13,7 +13,7 @@ namespace ColorStackRush
         // Screens (state-driven)
         GameObject mainMenu, hud, pause, gameOver, victory;
         // Overlays (opened on demand)
-        GameObject settings, shop, daily;
+        GameObject settings, shop, daily, levels;
 
         ShopPanel shopPanel;
         DailyRewardPanel dailyPanel;
@@ -27,7 +27,7 @@ namespace ColorStackRush
         /// <summary>Called once by UIBuilder after all panels are constructed.</summary>
         public void Init(GameObject mainMenu, GameObject hud, GameObject pause,
             GameObject gameOver, GameObject victory,
-            GameObject settings, GameObject shop, GameObject daily)
+            GameObject settings, GameObject shop, GameObject daily, GameObject levels)
         {
             this.mainMenu = mainMenu;
             this.hud = hud;
@@ -37,6 +37,7 @@ namespace ColorStackRush
             this.settings = settings;
             this.shop = shop;
             this.daily = daily;
+            this.levels = levels;
 
             shopPanel = shop.GetComponent<ShopPanel>();
             dailyPanel = daily.GetComponent<DailyRewardPanel>();
@@ -50,7 +51,7 @@ namespace ColorStackRush
             if (mainMenu == null) return; // not initialized yet
 
             mainMenu.SetActive(state == GameState.MainMenu);
-            hud.SetActive(state == GameState.Playing || state == GameState.Paused || state == GameState.Finish);
+            hud.SetActive(state == GameState.Playing || state == GameState.Paused || state == GameState.Finish || state == GameState.Dying);
             pause.SetActive(state == GameState.Paused);
             gameOver.SetActive(state == GameState.GameOver);
             victory.SetActive(state == GameState.Victory);
@@ -59,6 +60,8 @@ namespace ColorStackRush
         }
 
         // --- Overlay control (called by menu buttons) ---
+
+        public void OpenLevels() { levels.SetActive(true); levels.GetComponent<LevelSelectPanel>().Refresh(); }
 
         public void OpenShop()
         {
@@ -83,6 +86,7 @@ namespace ColorStackRush
             if (settings != null) settings.SetActive(false);
             if (shop != null) shop.SetActive(false);
             if (daily != null) daily.SetActive(false);
+            if (levels != null) levels.SetActive(false);
         }
     }
 }

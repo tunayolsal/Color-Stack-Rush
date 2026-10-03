@@ -15,14 +15,16 @@ namespace ColorStackRush
         GameObject shieldOrb;
         Transform ballTransform;
         Coroutine blinkRoutine;
+        Vector3 ballRestScale, ringRestScale;
+        Quaternion ballRestRotation;
 
         void Awake()
         {
             ballTransform = transform.Find("Ball");
-            if (ballTransform != null) ballRenderer = ballTransform.GetComponent<MeshRenderer>();
+            if (ballTransform != null) { ballRenderer = ballTransform.GetComponent<MeshRenderer>(); ballRestScale = ballTransform.localScale; ballRestRotation = ballTransform.localRotation; }
 
             var ring = transform.Find("ColorRing");
-            if (ring != null) ringRenderer = ring.GetComponent<MeshRenderer>();
+            if (ring != null) { ringRenderer = ring.GetComponent<MeshRenderer>(); ringRestScale = ring.localScale; }
 
             var orb = transform.Find("ShieldOrb");
             if (orb != null)
@@ -34,10 +36,18 @@ namespace ColorStackRush
             }
         }
 
+        void ResetVisuals()
+        {
+            if (blinkRoutine != null) StopCoroutine(blinkRoutine);
+            if (ballRenderer != null) ballRenderer.enabled = true;
+            if (ballTransform != null) { Juice.ForgetTransform(ballTransform); ballTransform.localScale = ballRestScale; ballTransform.localRotation = ballRestRotation; }
+            if (ringRenderer != null) { Juice.ForgetTransform(ringRenderer.transform); ringRenderer.transform.localScale = ringRestScale; }
+        }
         void Start() => ApplySkin(SaveManager.Data.selectedSkin);
 
         void OnEnable()
         {
+            GameEvents.RunStarted += ResetVisuals;
             GameEvents.SkinSelected += ApplySkin;
             GameEvents.ActiveColorChanged += OnActiveColorChanged;
             GameEvents.ObstacleHit += OnObstacleHit;
@@ -48,6 +58,7 @@ namespace ColorStackRush
 
         void OnDisable()
         {
+            GameEvents.RunStarted -= ResetVisuals;
             GameEvents.SkinSelected -= ApplySkin;
             GameEvents.ActiveColorChanged -= OnActiveColorChanged;
             GameEvents.ObstacleHit -= OnObstacleHit;

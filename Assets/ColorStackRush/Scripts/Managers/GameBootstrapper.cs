@@ -17,6 +17,8 @@ namespace ColorStackRush
         {
             SaveManager.Load();
             ApplyQualitySettings();
+            for (int i = 0; i < 4; i++) { ColorSymbols.Shared((GameColor)i); ColorSymbols.SpriteFor((GameColor)i); MaterialCache.Get(ColorPalette.Get((GameColor)i)); }
+            ParticleFactory.Burst(Vector3.zero, Color.white, 0);
             SetupEnvironment();
 
             // --- Managers (added in dependency order; Awake runs immediately per AddComponent) ---
@@ -29,6 +31,7 @@ namespace ColorStackRush
             managers.AddComponent<ShopManager>();
             managers.AddComponent<DailyRewardManager>();
             managers.AddComponent<SwipeInput>();
+            managers.AddComponent<ThemePresentation>();
 
             // --- World actors ---
             var player = BuildPlayer();
@@ -50,6 +53,7 @@ namespace ColorStackRush
             QualitySettings.shadows = ShadowQuality.All;      // soft shadows
             QualitySettings.shadowResolution = ShadowResolution.Medium;
             QualitySettings.shadowDistance = shadowDistance;
+            QualityProfile.Apply();
             QualitySettings.vSyncCount = 0;                   // let targetFrameRate rule on mobile
         }
 

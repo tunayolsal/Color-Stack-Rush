@@ -102,9 +102,11 @@ namespace ColorStackRush
         /// <summary>Writes the high score into save data at the end of a run.</summary>
         public void CommitRunResults()
         {
-            if (Score > SaveManager.Data.highScore)
+            var config = GameManager.Instance.CurrentRun;
+            int best = config.mode == RunMode.Endless ? SaveManager.Data.endlessBest : SaveManager.Data.levelScores[config.level - 1];
+            if (Score > best)
             {
-                SaveManager.Data.highScore = Score;
+                // The legacy record is retained separately; Progression commits the mode record.
                 IsNewBest = true;
             }
         }
