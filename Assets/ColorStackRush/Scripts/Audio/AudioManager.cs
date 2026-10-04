@@ -19,6 +19,8 @@ namespace ColorStackRush
         AudioSource musicSource;
         AudioSource sfxSource;
         readonly Dictionary<SfxId, AudioClip> clips = new Dictionary<SfxId, AudioClip>();
+        bool audioUnlocked;
+        bool runHasStarted;
 
         void Awake()
         {
@@ -37,7 +39,6 @@ namespace ColorStackRush
 
             musicSource.clip = SfxSynth.GenerateMusicLoop();
             ApplySettings();
-            musicSource.Play();
         }
 
         void OnEnable()
@@ -48,6 +49,7 @@ namespace ColorStackRush
             GameEvents.PowerUpStarted += OnPowerUpStarted;
             GameEvents.ActiveColorChanged += OnColorChanged;
             GameEvents.StateChanged += OnStateChanged;
+            GameEvents.RunStarted += OnRunStarted;
         }
 
         void OnDisable()
@@ -58,6 +60,7 @@ namespace ColorStackRush
             GameEvents.PowerUpStarted -= OnPowerUpStarted;
             GameEvents.ActiveColorChanged -= OnColorChanged;
             GameEvents.StateChanged -= OnStateChanged;
+            GameEvents.RunStarted -= OnRunStarted;
         }
 
         // --- Event reactions ---
@@ -88,6 +91,20 @@ namespace ColorStackRush
         }
 
         // --- Public API ---
+
+        void OnRunStarted()
+        {
+            runHasStarted = true;
+            UnlockAudio();
+        }
+
+        /// <summary>Called only after a play button/browser gesture; never autoplay at startup.</summary>
+        public void UnlockAudio()
+        {
+            audioUnlocked = true;
+            ApplySettings();
+            if (musicSource != null && runHasStarted && SaveManager.Data.musicOn && !musicSource.isPlaying) musicSource.Play();
+        }
 
         /// <summary>Plays a one-shot sound effect with optional pitch variation.</summary>
         public void PlaySfx(SfxId id, float pitch = 1f)
@@ -131,6 +148,8 @@ namespace ColorStackRush
             var d = SaveManager.Data;
             musicSource.volume = d.musicOn ? d.musicVolume * musicBaseLevel : 0f;
             sfxSource.volume = d.sfxOn ? d.sfxVolume * sfxBaseLevel : 0f;
+            if (audioUnlocked && runHasStarted && d.musicOn && !musicSource.isPlaying) musicSource.Play();
+            if (!d.musicOn && musicSource.isPlaying) musicSource.Stop();
         }
     }
 }

@@ -15,8 +15,8 @@ namespace ColorStackRush.Tests
         {
             File.WriteAllText(path, "{\"coins\":246,\"highScore\":7890,\"level\":9,\"unlockedSkins\":[0,2],\"selectedSkin\":2,\"musicVolume\":0.4,\"hapticsOn\":false}");
             var d = SaveStore.Load(path);
-            Assert.That(d.version, Is.EqualTo(2)); Assert.That(d.coins, Is.EqualTo(246)); Assert.That(d.highScore, Is.EqualTo(7890));
-            Assert.That(d.level, Is.EqualTo(9)); Assert.That(d.selectedSkin, Is.EqualTo(2)); Assert.That(d.unlockedSkins, Does.Contain(2));
+            Assert.That(d.version, Is.EqualTo(3)); Assert.That(d.coins, Is.EqualTo(246)); Assert.That(d.highScore, Is.EqualTo(7890));
+            Assert.That(d.highestUnlockedLevel, Is.EqualTo(9)); Assert.That(d.selectedSkin, Is.EqualTo(2)); Assert.That(d.unlockedSkins, Does.Contain(2));
             Assert.That(d.musicVolume, Is.EqualTo(.4f)); Assert.That(d.hapticsOn, Is.False); Assert.That(d.endlessBest, Is.Zero); Assert.That(d.levelScores[0], Is.Zero);
             Assert.That(d.sfxVolume, Is.EqualTo(1));
         }
@@ -30,34 +30,34 @@ namespace ColorStackRush.Tests
             File.WriteAllText(path, "{broken again"); Assert.That(SaveStore.Load(path).coins, Is.EqualTo(100));
         }
         [Test] public void SuccessfulSaveLeavesNoTemporaryFile() { SaveStore.Save(path, new SaveData()); Assert.That(File.Exists(path), Is.True); Assert.That(File.Exists(path + ".bak"), Is.True); Assert.That(File.Exists(path + ".tmp"), Is.False); }
-        [Test] public void ModesNeverMixRecordsOrRegrantCoins()
+        [Test] public void LevelResultsNeverRegrantCoinsOrOverwriteLegacyRecords()
         {
-            var d = SaveStore.Normalize(new SaveData { coins = 50, highScore = 9000 });
-            Progression.Apply(d, new RunResult { config = RunConfig.Endless(7), score = 400, distance = 123 });
-            Progression.Apply(d, new RunResult { config = RunConfig.Campaign(1), score = 250, stars = 2, completed = true, coins = 100 });
-            Assert.That(d.endlessBest, Is.EqualTo(400)); Assert.That(d.endlessDistance, Is.EqualTo(123)); Assert.That(d.levelScores[0], Is.EqualTo(250));
-            Assert.That(d.level, Is.EqualTo(2)); Assert.That(d.levelStars[0], Is.EqualTo(2)); Assert.That(d.coins, Is.EqualTo(50)); Assert.That(d.highScore, Is.EqualTo(9000));
+            var d = SaveStore.Normalize(new SaveData { coins = 50, highScore = 9000, endlessBest = 400, endlessDistance = 123 });
+            Progression.Apply(d, new RunResult { config = RunConfig.Level(1), score = 250, stars = 2, completed = true, coins = 100 });
+            Assert.That(d.endlessBest, Is.EqualTo(400)); Assert.That(d.endlessDistance, Is.EqualTo(123));
+            Assert.That(Progression.BestScore(d, 1), Is.EqualTo(250)); Assert.That(Progression.Stars(d, 1), Is.EqualTo(2));
+            Assert.That(d.highestUnlockedLevel, Is.EqualTo(2)); Assert.That(d.coins, Is.EqualTo(50)); Assert.That(d.highScore, Is.EqualTo(9000));
         }
         [TestCase(7, 1)] [TestCase(8, 2)] [TestCase(13, 2)] [TestCase(14, 3)] public void StarThresholds(int stairs, int stars) => Assert.That(RunResult.StarsFor(stairs), Is.EqualTo(stars));
-        [Test] public void AllCampaignSeedsAnd1000EndlessSeedsHaveReachableRoutes()
+        [Test] public void First1000LevelsAndLargeIdsHaveReachableDeterministicRoutes()
         {
             var a = new TrackSegment(); var b = new TrackSegment();
-            for (int seed = 0; seed < 1000; seed++) ValidateRun(RunConfig.Endless(seed), 150, a, b);
-            for (int level = 1; level <= 18; level++) ValidateRun(RunConfig.Campaign(level), 25, a, b);
+            for (int seed = 0; seed < 1000; seed++) ValidateRun(RunConfig.Level(seed + 1), 150, a, b);
+            foreach (long level in new long[] { 18, 19, 20, 100, 1000, 1000000 }) ValidateRun(RunConfig.Level(level), 25, a, b);
         }
         static void ValidateRun(RunConfig c, int count, TrackSegment a, TrackSegment b)
         {
             for (int i = 0; i < count; i++)
             {
                 TrackPlanner.Fill(c, i, a); TrackPlanner.Fill(c, i, b);
-                Assert.That(TrackValidator.Validate(a, TrackPlanner.SafeX(i - 1), c.MaxSpeed), Is.True, $"seed {c.seed} segment {i}");
+                Assert.That(TrackValidator.Validate(a, TrackPlanner.SafeX(c, i - 1), c.MaxSpeed), Is.True, $"seed {c.seed} segment {i}");
                 Assert.That(a.count, Is.EqualTo(b.count)); Assert.That(a.pattern, Is.EqualTo(b.pattern));
                 for (int j = 0; j < a.count; j++) { Assert.That(a.items[j].x, Is.EqualTo(b.items[j].x)); Assert.That(a.items[j].phase, Is.EqualTo(b.items[j].phase)); Assert.That(a.items[j].color, Is.EqualTo(b.items[j].color)); }
             }
         }
         [Test] public void ColorTransitionHasNoPickupsOrHazardsAndWarningAtLeastTwoSeconds()
         {
-            var buffer = new TrackSegment(); var c = RunConfig.Endless(13);
+            var buffer = new TrackSegment(); var c = RunConfig.Level(13);
             Assert.That(TrackPlanner.WarningDistance / c.MaxSpeed, Is.GreaterThanOrEqualTo(2));
             for (int i = 0; i < 100; i++) { TrackPlanner.Fill(c, i, buffer); if (buffer.pattern == TrackPattern.ColorTransition) Assert.That(buffer.count, Is.Zero); }
             Assert.That(TrackPlanner.ColorAtDistance(c, 219), Is.Not.EqualTo(TrackPlanner.ColorAtDistance(c, 220)));
@@ -77,10 +77,10 @@ namespace ColorStackRush.Tests
         }
         [Test] public void PlannerAndValidatorAllocateNothingAfterWarmup()
         {
-            var c = RunConfig.Endless(77); var segment = new TrackSegment(); bool valid = true;
-            for (int i = 0; i < 100; i++) { TrackPlanner.Fill(c, i, segment); valid &= TrackValidator.Validate(segment, TrackPlanner.SafeX(i - 1), 18); }
+            var c = RunConfig.Level(77); var segment = new TrackSegment(); bool valid = true;
+            for (int i = 0; i < 100; i++) { TrackPlanner.Fill(c, i, segment); valid &= TrackValidator.Validate(segment, TrackPlanner.SafeX(c, i - 1), 18); }
             long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 10000; i++) { TrackPlanner.Fill(c, i, segment); valid &= TrackValidator.Validate(segment, TrackPlanner.SafeX(i - 1), 18); }
+            for (int i = 0; i < 10000; i++) { TrackPlanner.Fill(c, i, segment); valid &= TrackValidator.Validate(segment, TrackPlanner.SafeX(c, i - 1), 18); }
             long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
             Assert.That(valid, Is.True); Assert.That(bytes, Is.Zero);
         }

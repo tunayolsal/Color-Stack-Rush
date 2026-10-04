@@ -54,6 +54,7 @@ namespace ColorStackRush
             // Router takes over visibility from here.
             var manager = gameObject.AddComponent<UIManager>();
             manager.Init(menu, hud, pause, gameOver, victory, settings, shop, daily, levels);
+            safe.gameObject.AddComponent<SaveStatusPanel>();
         }
 
         void BuildEventSystem()
@@ -73,7 +74,7 @@ namespace ColorStackRush
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = referenceResolution;
-            scaler.matchWidthOrHeight = 0.5f; // balanced phone/tablet scaling
+            scaler.matchWidthOrHeight = 0f; // balanced phone/tablet scaling
 
             go.AddComponent<GraphicRaycaster>();
             return go.transform;

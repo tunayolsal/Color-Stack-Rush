@@ -6,10 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Unity 6 (`6000.3.3f1`) project. The actual game — **Color Stack Rush**, a
 hypercasual "roll forward, swipe to match color" mobile game — lives entirely
-under `Assets/ColorStackRush/`. It is built **100% from code and Unity
-primitives**: no external models, textures, or audio files. Everything
-(meshes, materials, particles, SFX/music) is generated procedurally at
-runtime by `GameBootstrapper`.
+under `Assets/ColorStackRush/`. The scene is assembled by `GameBootstrapper` from procedural toy meshes,
+materials and audio plus selected CC0 sprites and eight environment models
+in `Assets/Art`. See `Assets/Art/SOURCES.md` for source and license records.
 
 Two unrelated JS projects (`chroma-hole/`, `hook-rush` — the latter is a
 sibling directory *outside* this repo, referenced only via
@@ -19,7 +18,7 @@ treat them as part of this project's source tree.
 
 ## Running the game
 
-Build and test CLI instructions are in README.md. ReleaseBuilder generates the Android release scene; Unity Test Runner hosts EditMode and PlayMode tests.
+Build and test CLI instructions are in README.md. ReleaseBuilder generates the WebGL release scene; Unity Test Runner hosts EditMode and PlayMode tests.
 
 1. Open the project in Unity `6000.3.3f1` (Unity Hub will prompt to install
    the matching editor version from `ProjectSettings/ProjectVersion.txt`).
@@ -59,7 +58,7 @@ Scripts/
   Editor/        SceneSetupTool (the Tools → Color Stack Rush menu)
 ```
 
-**Everything is code-built, nothing is a prefab asset.** `SpawnManager.BuildTemplates()`
+**Scene assembly and spawn templates are code-built.** Imported CC0 environment models supplement the procedural gameplay meshes. `SpawnManager.BuildTemplates()`
 constructs inactive template GameObjects (Block, Coin, Wall, Spinner, Slider,
 PowerUp, GroundTile) from primitives that `ObjectPool` then clones — this is
 the pattern to follow when adding a new spawnable type.
@@ -73,12 +72,12 @@ called directly. When adding a new cross-system signal, add it here rather
 than wiring a direct reference. Subscribers must unsubscribe in
 `OnDisable`/`OnDestroy`.
 
-Core gameplay loop: the ball auto-runs and accelerates; a glowing ring under
+Core gameplay loop: the player auto-runs at its level difficulty profile speed; a glowing ring under
 it (driven by `ColorManager`) shows the currently-required color, which
 changes at planned distance boundaries with an empty region and advance warning; matching-color blocks grow the stack (= health, capped at 32) and
 score, wrong-color blocks or obstacles shrink it; stack at zero ends the run.
 Crossing the finish gate converts remaining stack into escalating
-additive bonus points (+10, +20, ...) on the finish stairs. Endless has no finish gate. RunConfig and RunResult keep campaign and endless records separate.
+additive bonus points (+10, +20, ...) on the finish stairs. Every finite level finishes and unlocks the next long level ID. There is no separate endless mode. LevelCatalog controls bounded length, cycling themes and deterministic seeds.
 
 **Design conventions already established in this codebase — follow them for
 new code:**
@@ -100,7 +99,7 @@ new code:**
 
 All tunables are `[SerializeField]` fields on these components (edit defaults
 in code, or on the instance at runtime in the Editor):
-- Difficulty: `PlayerController` (baseSpeed/acceleration), `RunConfig` (length/speed cap), `TrackPlanner` (patterns and introductions). `SpawnManager` handles pooling and streaming.
+- Difficulty: `DifficultyProfile` (level speed, damage, recovery frequency), `LevelCatalog` (length/theme/seed), `TrackPlanner` (patterns and introductions). `SpawnManager` handles pooling and streaming.
 - Health: `PlayerStack.startBlocks`, `PlayerCollision.obstacleDamage`.
 - Combo: `ScoreManager` (comboPerMultiplier, maxMultiplier, pointsPerBlock).
 - Color pressure: `TrackPlanner.ColorBand/WarningDistance/TransitionAfter`, with `ColorManager` following distance.
@@ -111,7 +110,7 @@ in code, or on the instance at runtime in the Editor):
 
 JSON at `Application.persistentDataPath/colorstackrush_save.json` via
 `SaveManager`/`SaveData`: coins, high score, level, unlocked/selected skins,
-volume/mute/haptics settings, daily-reward streak and last claim date. Schema v2 also holds per-level best scores/stars, endless records, tutorial, reduced motion and quality. SaveStore migrates old JSON and retains a temporary-write/backup recovery path. Tests must use isolated directories.
+volume/mute/haptics settings, daily-reward streak and last claim date. Schema v3 holds sparse long-ID level records, highestUnlockedLevel, tutorial, reduced motion and quality. Legacy endless/general records stay archived. Web SaveAsync waits for IndexedDB synchronization; transactions rollback on failure. SaveStore migrates old JSON and retains a temporary-write/backup recovery path. Tests must use isolated directories.
 
 ## Git workflow
 
@@ -119,10 +118,10 @@ This repo is pushed to `github.com/tunayolsal/Color-Stack-Rush`. As you do work,
 commit regularly with clean, descriptive commit messages and push to GitHub
 so progress is never lost — don't let uncommitted work pile up locally.
 
-## Mobile build notes
+## Browser and mobile build notes
 
 - Portrait orientation; UI authored at 1080×1920, scales both ways.
 - `QualityProfile` targets 60 FPS (high) or 30 FPS (low), vSync off; real device measurements remain necessary.
-- Android release: set Scripting Backend to IL2CPP + ARM64 in Player Settings.
+- Web release: IL2CPP, Brotli encoding, correct wasm MIME, top-level portrait canvas and acknowledged IndexedDB writes. No APK is required for the current delivery.
 - Haptics via `Handheld.Vibrate()` — swap `HapticsManager` internals for a
   richer plugin if needed.

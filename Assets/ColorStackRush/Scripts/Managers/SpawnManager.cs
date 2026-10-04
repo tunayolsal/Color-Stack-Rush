@@ -77,7 +77,7 @@ namespace ColorStackRush
                 while (!finishSpawned && spawnZ < playerZ + spawnAheadDistance)
                 {
                     // Stop a full chunk early so nothing overlaps the finish gate.
-                    if (config.mode == RunMode.Campaign && spawnZ + TrackSegment.Length >= levelLength) { SpawnFinish(); break; }
+                    if (spawnZ + TrackSegment.Length >= levelLength) { SpawnFinish(); break; }
                     SpawnChunk();
                     spawnZ += TrackSegment.Length;
                     segmentIndex++;
@@ -110,7 +110,7 @@ namespace ColorStackRush
 
         void ResetStreamingState()
         {
-            config = GameManager.Instance != null ? GameManager.Instance.CurrentRun : RunConfig.Campaign(1);
+            config = GameManager.Instance != null ? GameManager.Instance.CurrentRun : RunConfig.Level(1);
             segmentIndex = 0;
             spawnZ = TrackPlanner.FirstZ;
             groundFrontZ = -groundTileLength;
@@ -166,7 +166,7 @@ namespace ColorStackRush
         void SpawnChunk()
         {
             TrackPlanner.Fill(config, segmentIndex, segment);
-            if (!TrackValidator.Validate(segment, TrackPlanner.SafeX(segmentIndex - 1), config.MaxSpeed)) TrackPlanner.Fallback(segment);
+            if (!TrackValidator.Validate(segment, TrackPlanner.SafeX(config, segmentIndex - 1), config.MaxSpeed)) TrackPlanner.Fallback(segment);
             for (int i = 0; i < segment.count; i++)
             {
                 var item = segment.items[i];
@@ -242,7 +242,7 @@ namespace ColorStackRush
 
                 Color stepColor = Color.Lerp(
                     ColorPalette.Get((GameColor)(i % 4)),
-                    Color.white, 0.35f);
+                    Color.white, 0.08f);
 
                 Primitives.Create(PrimitiveType.Cube, finishRoot.transform,
                     new Vector3(0f, top * 0.5f, stepZ),
@@ -289,16 +289,13 @@ namespace ColorStackRush
         GameObject BuildBlockTemplate()
         {
             var root = NewTemplate("Block");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.5f, 0f), Vector3.one * 0.8f,
-                MaterialCache.Get(ColorPalette.Get(GameColor.Pink)), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .5f, 0f), Vector3.one * .8f, MaterialCache.Get(ColorPalette.Get(GameColor.Pink)));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
             col.center = new Vector3(0f, 0.5f, 0f);
             col.size = new Vector3(1.1f, 1.1f, 1.1f); // slightly generous pickup
 
-            ColorSymbols.AddWorld(root.transform);
             root.AddComponent<CollectibleBlock>();
             return root;
         }
@@ -324,9 +321,8 @@ namespace ColorStackRush
         GameObject BuildWallTemplate()
         {
             var root = NewTemplate("Wall");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.6f, 0f), new Vector3(1.18f, 1.2f, 0.9f),
-                MaterialCache.Get(ColorPalette.Obstacle), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .6f, 0f), new Vector3(1.18f, 1.2f, .9f), MaterialCache.Get(ColorPalette.Obstacle));
+            ToyMeshes.Block(root.transform, "Bumper", new Vector3(0f, .72f, -.48f), new Vector3(1.08f, .28f, .12f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -350,8 +346,7 @@ namespace ColorStackRush
             var bar = new GameObject("Moving");
             bar.transform.SetParent(root.transform, false);
             bar.transform.localPosition = new Vector3(0f, 0.55f, 0f);
-            Primitives.Create(PrimitiveType.Cube, bar.transform,
-                Vector3.zero, new Vector3(1.4f, 0.45f, 0.45f), mat, "Bar");
+            ToyMeshes.Block(bar.transform, "Bar", Vector3.zero, new Vector3(1.4f, .45f, .45f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = bar.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -364,9 +359,8 @@ namespace ColorStackRush
         GameObject BuildSliderTemplate()
         {
             var root = NewTemplate("Slider");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.75f, 0f), Vector3.one * 1.5f,
-                MaterialCache.Get(ColorPalette.Obstacle), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .75f, 0f), Vector3.one * 1.5f, MaterialCache.Get(ColorPalette.Obstacle));
+            ToyMeshes.Block(root.transform, "Bumper", new Vector3(0f, .75f, -.77f), new Vector3(1.3f, .35f, .1f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -413,6 +407,12 @@ namespace ColorStackRush
             Primitives.Create(PrimitiveType.Cube, root.transform,
                 new Vector3(roadWidth * 0.5f + 0.55f, -0.05f, 0f), new Vector3(0.5f, 0.7f, groundTileLength), railMat, "RailR");
 
+            ToyMeshes.Block(root.transform, "ShoulderL", new Vector3(-7.2f, -.6f, 0), new Vector3(6.8f, .7f, groundTileLength), MaterialCache.Get(new Color(.60f, .78f, .68f)));
+            ToyMeshes.Block(root.transform, "ShoulderR", new Vector3(7.2f, -.6f, 0), new Vector3(6.8f, .7f, groundTileLength), MaterialCache.Get(new Color(.60f, .78f, .68f)));
+            for (int i = 0; i < 3; i++)
+                ToyMeshes.Block(root.transform, "LaneJoint" + i, new Vector3(0, .012f, (i - 1) * 10), new Vector3(roadWidth, .02f, .07f), MaterialCache.Get(new Color(.5f, .65f, .73f)));
+            PrefabArt.DecorateTile(root.transform, groundTileLength);
+            root.AddComponent<GroundPresentationCache>().Warmup();
             return root;
         }
     }

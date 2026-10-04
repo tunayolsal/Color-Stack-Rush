@@ -72,15 +72,18 @@ namespace ColorStackRush
         {
             if (ballRenderer == null) return;
             var skin = ShopManager.GetSkin(skinIndex);
-            ballRenderer.sharedMaterial = MaterialCache.GetEmissive(skin.primary, 0.15f);
+            var rim = transform.Find("CosmeticRim");
+            if (rim != null) rim.GetComponent<MeshRenderer>().sharedMaterial = MaterialCache.Get(Color.Lerp(Color.white, skin.primary, .25f));
+            if (ColorManager.Instance != null) ballRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(ColorManager.Instance.ActiveColor));
         }
 
         /// <summary>The ring under the ball always shows which color to collect.</summary>
         void OnActiveColorChanged(GameColor color)
         {
             if (ringRenderer == null) return;
-            ringRenderer.sharedMaterial = MaterialCache.GetEmissive(ColorPalette.Get(color), 0.8f);
-            Juice.PunchScale(ringRenderer.transform, 0.6f, 0.35f);
+            ringRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(color));
+            if (ballRenderer != null) ballRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(color));
+            Juice.PunchScale(ringRenderer.transform, .18f, .25f);
         }
 
         void OnBlockCollected(bool correct, Vector3 pos)

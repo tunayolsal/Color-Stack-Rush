@@ -27,38 +27,58 @@ namespace ColorStackRush
     public static class TrackPlanner
     {
         public const float FirstZ = 18, ColorBand = 220, WarningDistance = 42, TransitionAfter = 24;
-        static uint Hash(uint value) { value ^= value >> 16; value *= 0x7feb352d; value ^= value >> 15; value *= 0x846ca68b; return value ^ (value >> 16); }
+        static uint Hash(uint value) => LevelCatalog.Hash(value);
         public static GameColor ColorAtDistance(RunConfig config, float z)
         {
             uint seed = Hash((uint)config.seed);
             int band = config.ChangesColor ? Mathf.Max(0, Mathf.FloorToInt(z / ColorBand)) : 0;
             return (GameColor)(((int)(seed % 4) + band * ((seed & 4) == 0 ? 1 : 3)) % 4);
         }
-        public static float SafeX(int index) => index < 0 ? 0 : Mathf.Sin(index * .55f) * 1.2f;
+        public static float SafeX(RunConfig config, int index)
+        {
+            if (index < 0) return 0;
+            float phase = (Hash((uint)config.seed ^ 0x51ed270bu) % 6283) / 1000f;
+            // Ease out from the spawn point; adjacent corridor centres move less
+            // than .71 units, including at the maximum supported speed of 18.
+            float introduction = Mathf.Min(1, (index + 1) / 8f);
+            return Mathf.Sin(index * .21f + phase) * config.Difficulty.CorridorAmplitude * introduction;
+        }
+        static uint Roll(RunConfig config, int index) => Hash((uint)config.seed ^ unchecked(((uint)index + 1) * 0x9e3779b9u));
+        static bool IsTransition(RunConfig config, float startZ)
+        {
+            int band = Mathf.FloorToInt((startZ + WarningDistance) / ColorBand);
+            float boundary = band * ColorBand;
+            return config.ChangesColor && band > 0 && startZ < boundary + TransitionAfter && startZ + TrackSegment.Length > boundary - WarningDistance;
+        }
+        public static int PowerSegment(RunConfig config)
+        {
+            if (config.levelId <= 2) return -1;
+            // One first successful 4% roll per finite course. Recomputing this
+            // small bounded scan keeps Fill stateless and deterministic.
+            for (int i = 2; FirstZ + (i + 1) * TrackSegment.Length < config.Length; i++)
+                if (!IsTransition(config, FirstZ + i * TrackSegment.Length) && (Roll(config, i) >> 16) % 100 < 4) return i;
+            return -1;
+        }
         public static void Fill(RunConfig config, int index, TrackSegment segment)
         {
             segment.count = 0;
             segment.startZ = FirstZ + index * TrackSegment.Length;
-            segment.safeX = SafeX(index);
+            segment.safeX = SafeX(config, index);
             segment.color = ColorAtDistance(config, segment.startZ + 12);
-            int band = Mathf.FloorToInt((segment.startZ + WarningDistance) / ColorBand);
-            float boundary = band * ColorBand;
-            if (config.ChangesColor && band > 0 && segment.startZ < boundary + TransitionAfter && segment.startZ + TrackSegment.Length > boundary - WarningDistance)
+            if (IsTransition(config, segment.startZ))
             { segment.pattern = TrackPattern.ColorTransition; return; }
-            uint roll = Hash((uint)config.seed ^ ((uint)index + 1) * 0x9e3779b9);
-            int maxPatterns = config.mode == RunMode.Endless ? (segment.startZ < 450 ? 5 : 7) : config.level == 1 ? 1 : config.level == 2 ? 3 : config.level < 5 ? 5 : config.level <= 6 ? 5 : 7;
+            uint roll = Roll(config, index);
+            var difficulty = config.Difficulty;
+            int maxPatterns = config.levelId == 1 ? 1 : config.levelId == 2 ? 3 : config.levelId <= 6 ? 5 : 7;
             int selection = (int)(roll % (uint)maxPatterns);
-            // Recovery every third segment; introductions restrict the moving obstacle set.
-            segment.pattern = index % 3 == 0 ? TrackPattern.BlockRun : (TrackPattern)selection;
-            if (config.mode == RunMode.Campaign && config.level < 5 && segment.pattern == TrackPattern.Spinner) segment.pattern = TrackPattern.Slider;
-            if (config.mode == RunMode.Campaign && config.level < 3 && segment.pattern == TrackPattern.Slider) segment.pattern = TrackPattern.WallGap;
-            if (config.mode == RunMode.Campaign)
-            {
-                if (config.level == 1 && index % 3 == 1) segment.pattern = TrackPattern.CoinRun;
-                if (index == 1 && config.level == 2) segment.pattern = TrackPattern.WallGap;
-                if (index == 1 && config.level == 3) segment.pattern = TrackPattern.Slider;
-                if (index == 1 && config.level == 5) segment.pattern = TrackPattern.Spinner;
-            }
+            if (config.levelId >= 7) selection = 1 + (int)(roll % 6); // recovery is explicit, rather than a second random easy lane
+            segment.pattern = index % difficulty.RecoveryPeriod == 0 ? TrackPattern.BlockRun : (TrackPattern)selection;
+            if (config.levelId < 5 && segment.pattern == TrackPattern.Spinner) segment.pattern = TrackPattern.Slider;
+            if (config.levelId < 3 && segment.pattern == TrackPattern.Slider) segment.pattern = TrackPattern.WallGap;
+            if (config.levelId == 1 && index % 3 == 1) segment.pattern = TrackPattern.CoinRun;
+            if (index == 1 && config.levelId == 2) segment.pattern = TrackPattern.WallGap;
+            if (index == 1 && config.levelId == 3) segment.pattern = TrackPattern.Slider;
+            if (index == 1 && config.levelId == 5) segment.pattern = TrackPattern.Spinner;
             float side = segment.safeX > 0 ? -1 : 1;
             float phase = (roll >> 8) % 628 / 100f;
             switch (segment.pattern)
@@ -66,7 +86,7 @@ namespace ColorStackRush
                 case TrackPattern.BlockRun:
                     for (int i = 0; i < 4; i++) segment.Add(TrackKind.Block, segment.safeX, 7 + i * 2.7f);
                     // A clearly separate wrong-color lane teaches avoidance without blocking the safe route.
-                    if (config.level > 1 || config.mode == RunMode.Endless) segment.Add(TrackKind.Block, side * 2.2f, 12, .55f, c: (GameColor)(((int)segment.color + 1) % 4));
+                    if (config.levelId > 1) segment.Add(TrackKind.Block, side * 2.2f, 12, .55f, c: (GameColor)(((int)segment.color + 1) % 4));
                     else if (index == 2) segment.Add(TrackKind.Block, side * 2.2f, 12, .55f, c: (GameColor)(((int)segment.color + 1) % 4));
                     break;
                 case TrackPattern.WallGap:
@@ -91,7 +111,7 @@ namespace ColorStackRush
                     segment.Add(TrackKind.Block, segment.safeX, 21);
                     break;
                 case TrackPattern.Slalom:
-                    for (int i = 0; i < 4; i++) segment.Add(TrackKind.Block, segment.safeX + (i % 2 == 0 ? -.4f : .4f), 7 + i * 3.2f);
+                    for (int i = 0; i < 4; i++) segment.Add(TrackKind.Block, Mathf.Clamp(segment.safeX + (i % 2 == 0 ? -.35f : .35f), -2.5f, 2.5f), 7 + i * 3.2f);
                     segment.Add(TrackKind.Wall, side * 2.4f, 12, .55f);
                     break;
                 case TrackPattern.RiskRoute:
@@ -102,19 +122,26 @@ namespace ColorStackRush
                     break;
             }
             // The final world combines two hazards on the optional side, keeping the safe corridor open.
-            if ((config.mode == RunMode.Campaign && config.level >= 13) || (config.mode == RunMode.Endless && segment.startZ > 1200))
+            if (config.levelId >= 13)
             {
                 if (segment.pattern == TrackPattern.Spinner || segment.pattern == TrackPattern.Slider || segment.pattern == TrackPattern.RiskRoute)
                     segment.Add(TrackKind.Wall, side * 2.4f, 19, .55f);
             }
-            if ((config.mode == RunMode.Endless || config.level >= 3) && (roll >> 16) % 100 < 8)
+            if (difficulty.DecoyCount > 1 && segment.pattern != TrackPattern.BlockRun)
+            {
+                segment.Add(TrackKind.Block, side * 2.3f, 9, .55f, c: (GameColor)(((int)segment.color + 1 + (roll % 3)) % 4));
+                float decoyX = side * 1.55f;
+                if (Mathf.Abs(decoyX - segment.safeX) >= 1.25f)
+                    segment.Add(TrackKind.Block, decoyX, 20, .55f, c: (GameColor)(((int)segment.color + 2) % 4));
+            }
+            if (index == PowerSegment(config))
                 segment.Add(TrackKind.PowerUp, segment.safeX, 22, power: (PowerUpType)((roll >> 24) % 5));
         }
         public static void Fallback(TrackSegment segment)
         {
             segment.count = 0;
             segment.pattern = TrackPattern.BlockRun;
-            segment.safeX = Mathf.Clamp(segment.safeX, -1.2f, 1.2f);
+            segment.safeX = Mathf.Clamp(segment.safeX, -2.1f, 2.1f);
             for (int i = 0; i < 4; i++) segment.Add(TrackKind.Block, segment.safeX, 8 + i * 3);
         }
     }
@@ -123,16 +150,17 @@ namespace ColorStackRush
         // The player has radius .55; a .15 buffer reserves a full 1.4-wide corridor.
         public static bool Validate(TrackSegment segment, float previousSafeX, float maxSpeed)
         {
-            if (segment.count < 0 || segment.count > segment.items.Length || Mathf.Abs(segment.safeX) > 2.6f || maxSpeed <= 0 || maxSpeed > 18) return false;
+            if (segment.count < 0 || segment.count > segment.items.Length || !Finite(segment.safeX) || !Finite(maxSpeed) || !Finite(previousSafeX) || Mathf.Abs(segment.safeX) > 2.6f || maxSpeed <= 0 || maxSpeed > 18) return false;
             if (Mathf.Abs(segment.safeX - previousSafeX) / 4f + .2f > 7f / maxSpeed) return false;
             for (int i = 0; i < segment.count; i++)
             {
                 var item = segment.items[i];
-                if (item.z < 0 || item.z >= TrackSegment.Length || Mathf.Abs(item.x) > 3.5f) return false;
+                if (!Finite(item.x) || !Finite(item.z) || !Finite(item.sweep) || item.sweep < 0 || item.z < 0 || item.z >= TrackSegment.Length || Mathf.Abs(item.x) > 3.5f) return false;
                 bool hazard = item.kind == TrackKind.Wall || item.kind == TrackKind.Spinner || item.kind == TrackKind.Slider || (item.kind == TrackKind.Block && item.color != segment.color);
                 if (hazard && Mathf.Abs(item.x - segment.safeX) < item.sweep + .7f) return false;
             }
             return true;
         }
+        static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
     }
 }

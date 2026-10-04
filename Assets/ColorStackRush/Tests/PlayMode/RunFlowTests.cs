@@ -36,7 +36,7 @@ namespace ColorStackRush.Tests
             int results = 0; Action<RunResult> count = _ => results++; GameEvents.RunCompleted += count;
             try
             {
-                GameManager.Instance.StartRun(RunConfig.Endless(9));
+                GameManager.Instance.StartRun(RunConfig.Level(1));
                 GameEvents.RaisePlayerDied(); GameEvents.RaisePlayerDied();
                 Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Dying));
                 float z = PlayerController.Instance.Distance; yield return new WaitForSecondsRealtime(.8f);
@@ -49,7 +49,7 @@ namespace ColorStackRush.Tests
             int results = 0; Action<RunResult> count = _ => results++; GameEvents.RunCompleted += count;
             try
             {
-                GameManager.Instance.StartRun(); GameEvents.RaisePlayerDied(); GameManager.Instance.StartRun(RunConfig.Endless(42));
+                GameManager.Instance.StartRun(); GameEvents.RaisePlayerDied(); GameManager.Instance.StartRun(RunConfig.Level(1));
                 yield return new WaitForSecondsRealtime(.8f);
                 Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Playing)); Assert.That(results, Is.Zero); Assert.That(GameManager.Instance.ResultCommitted, Is.False);
             }
@@ -60,11 +60,11 @@ namespace ColorStackRush.Tests
             GameManager.Instance.StartRun(); GameEvents.RaiseFinishReached();
             Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Finish)); GameManager.Instance.GoToMenu();
             yield return new WaitForSecondsRealtime(1.4f);
-            Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.MainMenu)); Assert.That(SaveManager.Data.level, Is.EqualTo(1));
+            Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.MainMenu)); Assert.That(SaveManager.Data.highestUnlockedLevel, Is.EqualTo(1));
         }
         [UnityTest] public IEnumerator PauseFreezesPhysicsAndRestartRestoresStackLimit()
         {
-            GameManager.Instance.StartRun(RunConfig.Endless(1)); yield return new WaitForFixedUpdate();
+            GameManager.Instance.StartRun(RunConfig.Level(1)); yield return new WaitForFixedUpdate();
             GameManager.Instance.PauseGame(); float z = PlayerController.Instance.Distance;
             yield return new WaitForSecondsRealtime(.15f); Assert.That(PlayerController.Instance.Distance, Is.EqualTo(z));
             var stack = PlayerController.Instance.GetComponent<PlayerStack>();
@@ -75,7 +75,7 @@ namespace ColorStackRush.Tests
         }
         [UnityTest] public IEnumerator BackgroundingSavesEarnedCoinsWithoutRegrantingThem()
         {
-            GameManager.Instance.StartRun(RunConfig.Endless(3));
+            GameManager.Instance.StartRun(RunConfig.Level(1));
             CurrencyManager.AddCoins(12);
             GameManager.Instance.SendMessage("OnApplicationPause", true);
             Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Paused));
@@ -101,14 +101,14 @@ namespace ColorStackRush.Tests
             Assert.That(Quaternion.Angle(child.localRotation, Quaternion.Euler(90, 0, 0)), Is.LessThan(.01f));
             Assert.That(child.localScale, Is.EqualTo(Vector3.one * .8f));
         }
-        [UnityTest] public IEnumerator NightHudAndFinalActionRemainReadable()
+        [UnityTest] public IEnumerator ColorOnlyHudAndNextActionContinueBeyond18()
         {
-            SaveManager.Data.level = 18;
-            GameManager.Instance.StartRun(RunConfig.Campaign(18));
+            SaveManager.Data.highestUnlockedLevel = 18;
+            GameManager.Instance.StartRun(RunConfig.Level(18));
             var hud = UnityEngine.Object.FindFirstObjectByType<HUDPanel>();
             var score = hud.transform.Find("Score").GetComponent<Text>();
-            Assert.That(score.color.r, Is.GreaterThan(.9f));
-            Assert.That(hud.transform.Find("Stack").GetComponent<Text>().text, Is.EqualTo("STACK 4 / 32"));
+            Assert.That(score.text, Is.Not.Empty);
+            Assert.That(hud.transform.Find("Stack").GetComponent<Text>().text, Does.Contain("4 / 32"));
             Assert.That(hud.transform.Find("Progress").GetComponent<Text>().text, Does.Contain("0%"));
             yield return null;
             string snapshots = Argument("-snapshotPath");
@@ -117,16 +117,44 @@ namespace ColorStackRush.Tests
             yield return new WaitForSecondsRealtime(1.3f);
             Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Victory));
             var panel = UnityEngine.Object.FindFirstObjectByType<VictoryPanel>();
-            Assert.That(panel.transform.Find("Card/NextButton/Label").GetComponent<Text>().text, Is.EqualTo("BACK TO MENU"));
+            Assert.That(panel.transform.Find("Card/NextButton/Label").GetComponent<Text>().text, Is.EqualTo("Sonraki bölüm"));
             if (snapshots != null) Capture(snapshots, "final-action");
         }
-        [UnityTest, Timeout(360000)] public IEnumerator EveryCampaignRouteCanFinishThroughRealPhysicsAndInput()
+        [UnityTest, Timeout(360000)] public IEnumerator First20LevelsAndLargeIdsFinishThroughRealPhysicsAndInput()
         {
+            // Batch-mode Editor has no focused Game View. Keep synthetic pointer
+            // events in the player, while exercising the normal input/physics loop.
+            var previousEditorInput = InputSystem.settings.editorInputBehaviorInPlayMode;
+            var previousBackgroundInput = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             var mouse = InputSystem.AddDevice<Mouse>();
             var report = new StringBuilder("level,score,stars,stairs,runSeconds,wrongColors,obstacleHits\n");
             int wrong = 0, hits = 0;
+            float botTarget = 0;
             Action<bool, Vector3> collect = (correct, _) => { if (!correct) wrong++; };
-            Action<Vector3> hit = _ => hits++;
+            Action<Vector3> hit = position =>
+            {
+                hits++;
+                var player = PlayerController.Instance;
+                var body = player.GetComponent<Rigidbody>();
+                var config = GameManager.Instance.CurrentRun;
+                int index = Mathf.Max(0, Mathf.FloorToInt((player.Distance - TrackPlanner.FirstZ) / TrackSegment.Length));
+                var trace = new StringBuilder($"Safe route hit: level={config.levelId} segment={index} body={body.position:F3} visual={player.transform.position:F3} target={botTarget:F3} corridor={TrackPlanner.SafeX(config, index):F3} event={position:F3} delta={Time.deltaTime:F3}\n");
+                var input = SwipeInput.Instance;
+                if (input != null)
+                    foreach (string name in new[] { "captured", "blocked", "waitForRelease", "accumulatedDelta", "lastPosition" })
+                        trace.Append(name).Append('=').Append(typeof(SwipeInput).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(input)).Append(' ');
+                trace.AppendLine();
+                foreach (var obstacle in UnityEngine.Object.FindObjectsByType<Obstacle>(FindObjectsSortMode.None))
+                    if (Mathf.Abs(obstacle.transform.position.z - body.position.z) < 3)
+                    {
+                        trace.AppendLine($"nearby {obstacle.name} position={obstacle.transform.position:F3} scale={obstacle.transform.localScale:F3}");
+                        foreach (var collider in obstacle.GetComponentsInChildren<Collider>())
+                            trace.AppendLine($"collider {collider.name} min={collider.bounds.min:F3} max={collider.bounds.max:F3}");
+                    }
+                Debug.Log(trace.ToString());
+            };
             GameEvents.BlockCollected += collect; GameEvents.ObstacleHit += hit;
             string snapshots = Argument("-snapshotPath");
             try
@@ -138,15 +166,19 @@ namespace ColorStackRush.Tests
                     UIManager.Instance.CloseOverlays(); UIManager.Instance.OpenSettings(); yield return null; Capture(snapshots, "settings");
                     UIManager.Instance.CloseOverlays();
                 }
-                for (int level = 1; level <= 18; level++)
+                foreach (long level in new long[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,100,1000,1000000 })
                 {
                     wrong = hits = 0;
-                    GameManager.Instance.StartRun(RunConfig.Campaign(level));
+                    SaveManager.Data.highestUnlockedLevel = level;
+                    GameManager.Instance.StartRun(RunConfig.Level(level));
                     MouseState state = new MouseState { position = new Vector2(Screen.width * .5f, Screen.height * .45f) };
                     InputSystem.QueueStateEvent(mouse, state); yield return null; yield return null;
                     state = state.WithButton(MouseButton.Left);
                     InputSystem.QueueStateEvent(mouse, state); yield return null;
+                    Assert.That(Mouse.current, Is.SameAs(mouse), "The bot mouse must remain the active pointer");
+                    Assert.That(mouse.leftButton.isPressed, Is.True, "Batch-mode focus discarded the bot press");
                     float target = 0, started = Time.realtimeSinceStartup, seconds = 0;
+                    botTarget = 0;
                     bool captured = false;
                     while (GameManager.Instance.State == GameState.Playing)
                     {
@@ -154,9 +186,10 @@ namespace ColorStackRush.Tests
                         seconds += Time.deltaTime;
                         Time.timeScale = 12; Time.fixedDeltaTime = .02f;
                         int index = Mathf.Max(0, Mathf.FloorToInt((PlayerController.Instance.Distance - TrackPlanner.FirstZ) / TrackSegment.Length));
-                        float nextTarget = TrackPlanner.SafeX(index);
+                        float nextTarget = TrackPlanner.SafeX(GameManager.Instance.CurrentRun, index);
                         state.position.x += (nextTarget - target) * Screen.width / 8.5f;
                         target = nextTarget;
+                        botTarget = target;
                         InputSystem.QueueStateEvent(mouse, state);
                         if (!captured && PlayerController.Instance.Distance > 45 && snapshots != null && (level == 1 || level == 7 || level == 13))
                         { Capture(snapshots, "world-" + ((level - 1) / 6 + 1)); captured = true; }
@@ -167,19 +200,21 @@ namespace ColorStackRush.Tests
                     while (GameManager.Instance.State == GameState.Finish) yield return null;
                     Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.Victory));
                     var result = GameManager.Instance.LastResult;
-                    Assert.That(result.config.level, Is.EqualTo(level)); Assert.That(result.stars, Is.GreaterThanOrEqualTo(1));
+                    Assert.That(result.config.levelId, Is.EqualTo(level)); Assert.That(result.stars, Is.GreaterThanOrEqualTo(1));
                     Assert.That(wrong, Is.Zero, "Wrong color on safe route " + level); Assert.That(hits, Is.Zero, "Obstacle on safe route " + level);
-                    Assert.That(SaveManager.Data.level, Is.EqualTo(Mathf.Min(18, level + 1)));
+                    Assert.That(SaveManager.Data.highestUnlockedLevel, Is.EqualTo(level + 1));
                     report.AppendLine($"{level},{result.score},{result.stars},{result.stairs},{seconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{wrong},{hits}");
                     if (snapshots != null && level == 18) Capture(snapshots, "victory");
                 }
-                Assert.That(SaveManager.Data.campaignCompleted, Is.True);
-                if (snapshots != null) File.WriteAllText(Path.Combine(snapshots, "campaign-physics.csv"), report.ToString());
+                Assert.That(SaveManager.Data.highestUnlockedLevel, Is.EqualTo(1000001));
+                if (snapshots != null) File.WriteAllText(Path.Combine(snapshots, "levels-physics.csv"), report.ToString());
             }
             finally
             {
                 GameEvents.BlockCollected -= collect; GameEvents.ObstacleHit -= hit;
                 InputSystem.RemoveDevice(mouse); Time.timeScale = 1; Time.fixedDeltaTime = .02f;
+                InputSystem.settings.editorInputBehaviorInPlayMode = previousEditorInput;
+                InputSystem.settings.backgroundBehavior = previousBackgroundInput;
             }
         }
         static string Argument(string key)

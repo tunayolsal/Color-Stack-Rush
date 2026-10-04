@@ -1,101 +1,162 @@
 using System;
 using System.IO;
-using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 namespace ColorStackRush
 {
-    // File operations are isolated so migration/recovery can be tested without touching a player's save.
-    public static class SaveStore
-    {
-        public static SaveData Normalize(SaveData d)
-        {
-            if (d.version > 2) throw new InvalidDataException("Unsupported save version");
-            if (d.version < 2 && d.level > 18) d.campaignCompleted = true;
-            d.version = 2;
-            d.level = Mathf.Clamp(d.level, 1, 18);
-            d.coins = Mathf.Max(0, d.coins);
-            d.highScore = Mathf.Max(0, d.highScore); // legacy record is preserved, never assigned to either mode
-            d.endlessBest = Mathf.Max(0, d.endlessBest);
-            if (float.IsNaN(d.endlessDistance) || float.IsInfinity(d.endlessDistance)) d.endlessDistance = 0;
-            d.endlessDistance = Mathf.Max(0, d.endlessDistance);
-            Array.Resize(ref d.levelScores, 18);
-            Array.Resize(ref d.levelStars, 18);
-            for (int i = 0; i < 18; i++) { d.levelScores[i] = Mathf.Max(0, d.levelScores[i]); d.levelStars[i] = Mathf.Clamp(d.levelStars[i], 0, 3); }
-            if (d.unlockedSkins == null) d.unlockedSkins = new System.Collections.Generic.List<int>();
-            d.unlockedSkins.RemoveAll(i => i < 0 || i >= ShopManager.SkinCount);
-            if (!d.unlockedSkins.Contains(0)) d.unlockedSkins.Add(0);
-            if (!d.unlockedSkins.Contains(d.selectedSkin)) d.selectedSkin = 0;
-            if (!string.IsNullOrEmpty(d.lastDailyClaim) && !DateTime.TryParseExact(d.lastDailyClaim, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _)) d.lastDailyClaim = "";
-            d.dailyStreak = Mathf.Max(0, d.dailyStreak);
-            d.musicVolume = Mathf.Clamp01(d.musicVolume);
-            d.sfxVolume = Mathf.Clamp01(d.sfxVolume);
-            return d;
-        }
-        static bool TryRead(string path, out SaveData value)
-        {
-            value = null;
-            try
-            {
-                if (!File.Exists(path)) return false;
-                string json = File.ReadAllText(path).Trim();
-                if (!json.StartsWith("{") || !json.EndsWith("}")) return false;
-                value = new SaveData();
-                JsonUtility.FromJsonOverwrite(json, value);
-                value = Normalize(value);
-                return true;
-            }
-            catch (Exception) { return false; }
-        }
-        public static SaveData Load(string path)
-        {
-            if (TryRead(path, out var value)) return value;
-            if (TryRead(path + ".bak", out value)) return value;
-            return Normalize(new SaveData());
-        }
-        public static void Save(string path, SaveData value)
-        {
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
-            string temp = path + ".tmp";
-            byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(Normalize(value)));
-            using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
-            { stream.Write(bytes, 0, bytes.Length); stream.Flush(true); }
-            bool validPrimary = TryRead(path, out _);
-            if (validPrimary)
-            {
-                try { File.Replace(temp, path, path + ".bak"); return; }
-                catch (PlatformNotSupportedException) { }
-                catch (IOException) { }
-                // Platforms without Replace still retain a verified recovery copy.
-                File.Copy(path, path + ".bak", true);
-            }
-            if (File.Exists(path)) File.Delete(path);
-            File.Move(temp, path);
-            if (!File.Exists(path + ".bak")) File.Copy(path, path + ".bak");
-        }
-    }
     public static class SaveManager
     {
         const string FileName = "colorstackrush_save.json";
         static SaveData data;
         static string testDirectory;
-        // Test fixtures must opt into isolated storage before creating the bootstrapper.
-        public static void SetStorageDirectoryForTests(string directory) { testDirectory = directory; data = null; }
+        static Action<Action<bool>> testSync;
+        static readonly Queue<SaveRequest> requests = new Queue<SaveRequest>();
+        static bool processing, transactionPending, deferredSave;
+        public static bool IsTransactionPending => transactionPending;
+        public static bool IsSaving => processing || requests.Count > 0;
+        public static event Action<bool> SaveCompleted;
+        // Fixtures opt into isolated storage and may supply a delayed IndexedDB substitute.
+        public static void SetStorageDirectoryForTests(string directory)
+        {
+            if (IsSaving) throw new InvalidOperationException("A save is still pending");
+            testDirectory = directory; data = null; transactionPending = deferredSave = false; testSync = null;
+        }
+        public static void SetStorageSyncForTests(Action<Action<bool>> sync) => testSync = sync;
         public static string FilePath => System.IO.Path.Combine(testDirectory ?? Application.persistentDataPath, FileName);
         public static SaveData Data { get { if (data == null) Load(); return data; } }
         public static void Load() => data = SaveStore.Load(FilePath);
+        public static bool TryBeginTransaction()
+        {
+            if (transactionPending || IsSaving) return false;
+            transactionPending = true;
+            return true;
+        }
+        public static void EndTransaction()
+        {
+            transactionPending = false;
+            if (!deferredSave) return;
+            deferredSave = false;
+            Save();
+        }
+        // On Web this reports queue acceptance. Durable transactions use SaveAsync instead.
         public static bool Save()
         {
-            try { SaveStore.Save(FilePath, Data); return true; }
-            catch (Exception e) { Debug.LogError("[SaveManager] Save failed: " + e.Message); return false; }
+            if (transactionPending) { deferredSave = true; return true; }
+            bool result = true;
+            SaveAsync(ok => result = ok);
+            return result;
         }
-        public static void DeleteAll()
+        public static void SaveAsync(Action<bool> completed) => EnqueueSave(completed, false);
+        static void EnqueueSave(Action<bool> completed, bool clearPreviousFiles)
         {
-            foreach (string suffix in new[] { "", ".bak", ".tmp" })
-                if (File.Exists(FilePath + suffix)) File.Delete(FilePath + suffix);
+            try
+            {
+                string json = JsonUtility.ToJson(Data);
+                requests.Enqueue(new SaveRequest(FilePath, json, completed, clearPreviousFiles));
+                ProcessNext();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[SaveManager] Save failed: " + e.Message);
+                completed?.Invoke(false);
+            }
+        }
+        static void ProcessNext()
+        {
+            if (processing || requests.Count == 0) return;
+            processing = true;
+            var request = requests.Dequeue();
+            FileSnapshot before = null;
+            try
+            {
+                before = new FileSnapshot(request.path);
+                var snapshot = new SaveData();
+                JsonUtility.FromJsonOverwrite(request.json, snapshot);
+                if (request.clearPreviousFiles)
+                    foreach (string suffix in new[] { "", ".bak", ".tmp" })
+                        if (File.Exists(request.path + suffix)) File.Delete(request.path + suffix);
+                SaveStore.Save(request.path, snapshot);
+                var restore = before;
+                bool finished = false;
+                Action<bool> finish = ok =>
+                {
+                    if (finished) return;
+                    finished = true;
+                    if (!ok) RestoreFiles(restore);
+                    Complete(request, ok);
+                };
+                if (testSync != null) testSync(finish);
+                else WebSaveBridge.Persist(finish);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[SaveManager] Save failed: " + e.Message);
+                RestoreFiles(before);
+                Complete(request, false);
+            }
+        }
+        static void RestoreFiles(FileSnapshot snapshot)
+        {
+            try { snapshot?.Restore(); }
+            catch (Exception e) { Debug.LogError("[SaveManager] Recovery failed: " + e.Message); }
+        }
+        static void Complete(SaveRequest request, bool ok)
+        {
+            processing = false;
+            // Domain rollback runs before observers or the next queued write see the data.
+            try { request.completed?.Invoke(ok); }
+            catch (Exception e) { Debug.LogException(e); }
+            try { SaveCompleted?.Invoke(ok); }
+            catch (Exception e) { Debug.LogException(e); }
+            ProcessNext();
+        }
+        public static void DeleteAll() => DeleteAllAsync(null);
+        public static bool DeleteAllAsync(Action<bool> completed)
+        {
+            if (!TryBeginTransaction()) return false;
+            var previous = Data;
             data = SaveStore.Normalize(new SaveData());
-            Save();
-            GameEvents.RaiseCoinsChanged(data.coins);
-            GameEvents.RaiseSkinSelected(data.selectedSkin);
+            EnqueueSave(ok =>
+            {
+                if (!ok) data = previous;
+                EndTransaction();
+                try
+                {
+                    GameEvents.RaiseCoinsChanged(data.coins);
+                    GameEvents.RaiseSkinSelected(data.selectedSkin);
+                }
+                finally { completed?.Invoke(ok); }
+            }, true);
+            return true;
+        }
+        sealed class SaveRequest
+        {
+            public readonly string path, json;
+            public readonly Action<bool> completed;
+            public readonly bool clearPreviousFiles;
+            public SaveRequest(string path, string json, Action<bool> completed, bool clearPreviousFiles)
+            { this.path = path; this.json = json; this.completed = completed; this.clearPreviousFiles = clearPreviousFiles; }
+        }
+        sealed class FileSnapshot
+        {
+            static readonly string[] Suffixes = { "", ".bak", ".tmp" };
+            readonly string path;
+            readonly byte[][] bytes = new byte[3][];
+            public FileSnapshot(string path)
+            {
+                this.path = path;
+                for (int i = 0; i < Suffixes.Length; i++)
+                    if (File.Exists(path + Suffixes[i])) bytes[i] = File.ReadAllBytes(path + Suffixes[i]);
+            }
+            public void Restore()
+            {
+                for (int i = 0; i < Suffixes.Length; i++)
+                {
+                    string file = path + Suffixes[i];
+                    if (bytes[i] != null) File.WriteAllBytes(file, bytes[i]);
+                    else if (File.Exists(file)) File.Delete(file);
+                }
+            }
         }
     }
 }

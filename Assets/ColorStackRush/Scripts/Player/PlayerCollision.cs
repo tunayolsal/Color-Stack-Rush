@@ -9,10 +9,6 @@ namespace ColorStackRush
     [RequireComponent(typeof(PlayerStack))]
     public class PlayerCollision : MonoBehaviour
     {
-        [Header("Damage")]
-        [SerializeField] int obstacleDamage = 2;
-        [SerializeField] float invincibilityDuration = 1.2f;
-
         PlayerStack stack;
         float invincibleUntil;
         bool finishTriggered;
@@ -71,10 +67,11 @@ namespace ColorStackRush
             }
 
             if (IsInvincible) return;
-            invincibleUntil = Time.time + invincibilityDuration;
+            var difficulty = GameManager.Instance.CurrentRun.Difficulty;
+            invincibleUntil = Time.time + difficulty.InvincibilitySeconds;
 
             obstacle.PlayHitReaction();
-            stack.RemoveBlocks(obstacleDamage);
+            stack.RemoveBlocks(difficulty.ObstacleDamage);
             GameEvents.RaiseObstacleHit(transform.position);
             ParticleFactory.Burst(transform.position + Vector3.up * 0.5f, ColorPalette.Obstacle, 16, 5f);
             HapticsManager.Heavy();

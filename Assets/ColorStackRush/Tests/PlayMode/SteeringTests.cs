@@ -20,7 +20,7 @@ namespace ColorStackRush.Tests
         {
             base.Setup(); folder = Path.Combine(Path.GetTempPath(), "csr-input-" + Guid.NewGuid()); SaveManager.SetStorageDirectoryForTests(folder);
             managers = new GameObject("InputTest"); managers.AddComponent<GameManager>(); managers.AddComponent<SwipeInput>(); mouse = InputSystem.AddDevice<Mouse>();
-            GameManager.Instance.StartRun(RunConfig.Endless(7)); Tick();
+            GameManager.Instance.StartRun(RunConfig.Level(1)); Tick();
         }
         public override void TearDown()
         {

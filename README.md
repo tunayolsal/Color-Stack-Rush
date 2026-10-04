@@ -1,59 +1,52 @@
 # Color Stack Rush
 
-A portrait Android runner made entirely with Unity primitives and C# generated meshes, UI, particles, music and sound effects. Unity version: **6000.3.3f1**.
+Unity **6000.3.3f1**, sürüm **0.3.0**. Yalnız renk eşleştirmeye dayalı dikey 3D oyun; bu teslim WebGL tarayıcı sürümüne odaklanır.
 
-Drag left and right to collect the active color and geometric symbol. Matching blocks score points and grow a trail with a maximum of 32 blocks. Further matches still score. Wrong colors and obstacles remove blocks; an empty trail ends the run. Cosmetics only change appearance.
+Fareyle veya tek parmakla sağa/sola sürükle; bilgisayarda A/D ve yön tuşları da kullanılabilir. Aktif renkteki bloklar kuyruğu büyütür ve puan verir. Yanlış renk iki, engel üç blok götürür. Kuyruk en fazla 32 blok taşır; sonraki doğru toplamalar puan vermeye devam eder. Kozmetikler aktif rengi örtmez ve oyun avantajı vermez.
 
-## Modes
+[Tarayıcıda oyna](https://color-stack-rush.tnaylsl1327.chatgpt.site) — hesap gerektirmez.
 
-- **Campaign:** 18 repeatable levels, unlocked in order. Levels 1–6 introduce collection, wall gaps, sliders, color transitions, spinners and combinations. Levels 7–12 use Sunset; levels 13–18 use Midnight. Completing a level earns one star, climbing eight stairs earns two and fourteen earns three. Level scores and stars retain their best values.
-- **Endless:** available immediately, without a finish gate. Speed rises to a maximum of 18 and later segments introduce more patterns. Score and distance records are separate from campaign progress.
+## Bölümler ve görünüş
 
-Eight patterns are planned from a run seed. Campaign seeds are fixed. Gameplay generation uses its own hash so audio and visual random effects cannot change the course. Color changes happen at distance boundaries, with an advance warning and an empty transition region. The validator reserves a reachable corridor including each moving obstacle's swept bounds and substitutes a collection segment for invalid content.
+Her koşunun bir bitişi vardır. Bölüm 1, 2, 3… biçiminde devam eder; ayrı sonsuz mod veya 18 bölüm sınırı yoktur. İlk altı bölüm mekanikleri sırayla öğretir. Sekiz desen, bölüm kimliğinin sabit tohumu ile değişik parkurlar oluşturur; aynı bölümü yeniden denemek aynı parkuru açar. Üç tema altışar bölümde döner.
 
-The HUD includes active/next color, symbols, trail size, progress and power-up timers. The first level teaches dragging and matching; Settings can replay it. UI uses `Screen.safeArea`. Settings also offer reduced camera motion and 30/60 FPS quality targets.
+İlk 18 bölümün uzunlukları korunur; sonrakiler 480–624 birimde kalır. Hız 1–6 arasında 10–12, 7–12 arasında 12,5–14 ve 13–18 arasında 14,5–16 olur; ardından 16'da kalır. Mutlak hız sınırı 18'dir. Kolay toplama segmentleri seyrekleşir, güvenli rota merkezin dışına kayar. Rota kontrol hızı ve engellerin süpürdüğü alanla doğrulanır. Renk geçişinden en az iki saniye önce uyarı ve boş geçiş bölgesi vardır.
 
-## Open and play
+Tamamlama bir yıldız, sekiz merdiven iki ve on dört merdiven üç yıldız verir. Eski bölümler sayfalı ekrandan tekrar oynanabilir. Parlak oyuncak görünüşü, ortak yuvarlatılmış blok modeli, renkli oyuncu, ince halka, nötr yol ve okunabilir engeller kullanır. Geometrik renk simgeleri bulunmaz. Türkçe HUD, güvenli alan, azaltılmış hareket ve kalite seçenekleri vardır.
 
-1. Open this project in Unity Hub using **6000.3.3f1**.
-2. Open `Assets/Scenes/SampleScene.unity` and press Play. **Tools → Color Stack Rush → Setup Scene** can prepare another empty scene.
-3. Drag with the left mouse button or use A/D/arrow keys. On Android, drag with one finger. A gesture beginning over a button does not steer, and another finger cannot inherit an existing gesture.
+Hazır CC0 kaynaklar: [Kenney Particle Pack](https://kenney.nl/assets/particle-pack), [Kenney UI Pack](https://kenney.nl/assets/ui-pack), [Kenney Mini Forest](https://kenney.nl/assets/mini-forest). Quaternius indirme kotası nedeniyle çevrede sekiz Mini Forest modeli kullanılır. Dosya/lisans kayıtları [Assets/Art/SOURCES.md](Assets/Art/SOURCES.md) içindedir.
 
-## Build
+## Aç ve WebGL derle
 
-Install Android Build Support including SDK/NDK and OpenJDK for this editor and activate its Unity license. Then choose **Tools → Color Stack Rush → Build Android APK**. It generates the release scene and builds an IL2CPP ARM64 APK at `Builds/Android/ColorStackRush.apk`.
-
-Batch example (replace the paths with your local paths):
+Unity Hub'dan projeyi 6000.3.3f1 ile aç; WebGL Build Support kurulmuş olmalıdır. SampleScene veya ColorStackRushRelease sahnesinde Play'e bas. **Tools → Color Stack Rush → Build Web Preview** tarayıcı dosyalarını üretir.
 
 ```powershell
 & 'C:/Program Files/Unity/Hub/Editor/6000.3.3f1/Editor/Unity.exe' `
   -batchmode -quit -projectPath 'C:/projects/Color-Stack-Rush' `
-  -buildTarget Android -executeMethod ReleaseBuilder.BuildAndroid `
-  -outputPath 'C:/builds/ColorStackRush.apk' -logFile 'C:/builds/android.log'
+  -buildTarget WebGL -executeMethod ReleaseBuilder.BuildWebPreview `
+  -outputPath 'C:/builds/ColorStackRush-Web' -logFile 'C:/builds/web.log'
 ```
 
-The Android package ID and Editor product name are preserved to retain existing save locations. The Android app label is Color Stack Rush. APKs use Unity's local debug signing; store publishing and release keystore setup are outside this change.
+Çıktıyı HTTP/HTTPS üzerinden sun; index.html dosyasını çift tıklamak yeterli değildir. Varsayılan derleme Brotli sıkıştırmasını Unity `.unityweb` açma desteğiyle kullanır; Sites statik sunucusu `_headers` kurallarını uygulamadığı için bu ayar gerekir. JavaScript ile açma ilk yüklemeyi biraz uzatabilir ve native WASM streaming kullanmaz. Kendi sunucunda native açma için derleme komutuna `-nativeWebDecompression true` ekle; bu durumda Brotli için `Content-Encoding: br`, WebAssembly için `Content-Type: application/wasm` gerekir. Çıktıdaki `_headers` bu kuralları destekleyen sunucular içindir. Oyun üst seviye sayfada çalışır; iframe kullanılmaz. Telefon çözünürlüğü sınırlanır. Sayfa yükleme ilerlemesi, hata sonrası yeniden deneme ve isteğe bağlı tam ekran içerir.
 
-## Tests
+## Kayıt ve mimari
 
-Use **Window → General → Test Runner** for EditMode and PlayMode tests. Batch invocation:
+`LevelCatalog.Get(long)` sonlu bölüm tanımını hesaplar. `RunConfig.Level(long)` koşuyu, `GameManager.StartRun(RunConfig)` yaşam döngüsünü yönetir. Ölüm/bitiş sonucu tek kez kaydedilir; hızlı yeniden başlatma eski animasyonları ve sonuçları iptal eder. Hareket FixedUpdate/Rigidbody.MovePosition kullanır.
+
+SaveData v3 yalnız oynanan bölümlerin kayıtlarını ve en yüksek açık bölümü saklar. V1/v2 göçü para, kozmetik, ayar ve sonuçları korur; 18 tamamlanmışsa 19 açılır. Eski genel/sonsuz rekorları arşivlenir, bölüm skorlarına karışmaz.
+
+Yerel kayıt geçici dosya ve sağlam yedek kullanır. Web kaydı IndexedDB senkronizasyonunu bekler; `SaveManager.SaveAsync` sonucu bildirir. Satın alma/günlük ödül/bölüm ilerlemesi başarısız yazmada geri alınır. Ses ilk oynama etkileşiminde açılır; arka plandaki sekme oyunu duraklatır. Tarayıcı verileri aynı site ve tarayıcıya aittir; yerel bilgisayar/Android kayıtları otomatik aktarılmaz. Tarayıcı verilerini silmek ilerlemeyi silebilir.
+
+## Testler
+
+Unity Test Runner üzerinden EditMode ve PlayMode çalıştır. Batch testlerde `-quit` ekleme:
 
 ```powershell
 & 'C:/Program Files/Unity/Hub/Editor/6000.3.3f1/Editor/Unity.exe' `
   -batchmode -projectPath 'C:/projects/Color-Stack-Rush' `
   -runTests -testPlatform EditMode `
   -testResults 'C:/builds/editmode.xml' -logFile 'C:/builds/editmode.log'
-# Repeat using -testPlatform PlayMode. Do not add -quit to a test invocation.
+# Aynısını -testPlatform PlayMode ile de çalıştır.
 ```
 
-Tests cover save migration and backup recovery, separate mode records, deterministic and reachable generation across 1,000 seeds, pool double release, terminal sequence cancellation, immediate death lock, background saving, pause/input isolation, UI gestures and multiple fingers. A PlayMode course bot drives all 18 levels through real input and physics. Add `-snapshotPath C:/builds/previews` to produce screenshots and the campaign results CSV during this test. Test saves use temporary directories and do not reset the player's save.
-
-Real Android performance, thermal stability, notch behavior and five-player acceptance testing still require the process in [DEVICE_QA.md](DEVICE_QA.md). A target FPS setting or an Editor test is not a device performance measurement.
-
-## Architecture and saves
-
-`GameBootstrapper` creates the runtime hierarchy. `GameManager.StartRun(RunConfig)` owns run/state transitions; `RunResult` is emitted once through `GameEvents.RunCompleted`. Movement uses a kinematic rigidbody in `FixedUpdate`. `TrackPlanner` and `TrackValidator` plan/validate reusable buffers; `SpawnManager` streams pooled objects.
-
-Save schema version 2 keeps existing coins, cosmetics, settings and the legacy general high score. It adds campaign scores/stars, endless records, tutorial status, reduced motion and quality. The old general record is preserved separately. Writes flush a temporary file and retain a last good `.bak`; a corrupt primary loads the backup. Coins are earned immediately and saved when backgrounded; the result screen does not grant them again. Shop purchases persist wallet debit, unlock and selection together. Daily claims require a strictly later device date.
-
-Game source and tests are under `Assets/ColorStackRush/`; batch release entry points are under `Assets/Editor/ReleaseBuilder.cs`. No ads, account, server, online leaderboard or store integration is included.
+Testler büyük bölüm kimliklerini, 1.000 bölümde rotaları, deterministik yeniden denemeyi, göç/hata kurtarmayı, tek sonucu, havuz ve dokunma sahipliğini kapsar. PlayMode botu gerçek Input System girdisi ve fizik döngüsünü kullanır; `-snapshotPath` ekran görüntüsü/bölüm CSV'si üretir. Fiziksel FPS ve oyuncu kabulü için [WEB_QA.md](WEB_QA.md) listesini uygula. Hedef FPS veya hızlandırılmış bot koşusu cihaz ölçümü değildir. Reklam, hesap, sunucu, çevrimiçi sıralama ve yeni APK bu teslimde yoktur.

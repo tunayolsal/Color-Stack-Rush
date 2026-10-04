@@ -2,19 +2,19 @@ using System;
 using UnityEngine;
 namespace ColorStackRush
 {
-    public enum RunMode { Campaign, Endless }
     [Serializable] public struct RunConfig
     {
-        public RunMode mode;
-        public int level;
+        public long levelId;
         public int seed;
-        public RunConfig(RunMode mode, int level, int seed) { this.mode = mode; this.level = level; this.seed = seed; }
-        public static RunConfig Campaign(int level) => new RunConfig(RunMode.Campaign, Mathf.Clamp(level, 1, 18), 7319 + Mathf.Clamp(level, 1, 18) * 104729);
-        public static RunConfig Endless(int seed) => new RunConfig(RunMode.Endless, 1, seed);
-        public float Length => mode == RunMode.Endless ? float.PositiveInfinity : 270f + (level - 1) * 18f;
-        public float MaxSpeed => mode == RunMode.Endless ? 18f : 15f;
-        public int Theme => mode == RunMode.Endless ? 0 : (level - 1) / 6;
-        public bool ChangesColor => mode == RunMode.Endless || level >= 4;
+        public int contentVersion;
+        public static RunConfig Level(long levelId) => LevelCatalog.Get(levelId).Config;
+        public float Length => LevelCatalog.GetLength(levelId);
+        public int Theme => LevelCatalog.GetTheme(levelId);
+        public bool ChangesColor => levelId >= 4;
+        public int DifficultyLevel => (int)Math.Min(Math.Max(1L, levelId), 18L);
+        public DifficultyProfile Difficulty => DifficultyProfile.ForLevel(levelId);
+        public float BaseSpeed => Difficulty.Speed;
+        public float MaxSpeed => Difficulty.Speed;
     }
     [Serializable] public struct RunResult
     {
@@ -26,21 +26,45 @@ namespace ColorStackRush
     }
     public static class Progression
     {
-        public const int LevelCount = 18;
+        public static bool IsUnlocked(SaveData data, long levelId) => levelId >= 1 && levelId <= data.highestUnlockedLevel;
+        public static int BestScore(SaveData data, long levelId) => data.FindLevelRecord(levelId)?.bestScore ?? 0;
+        public static int Stars(SaveData data, long levelId) => data.FindLevelRecord(levelId)?.bestStars ?? 0;
         public static void Apply(SaveData data, RunResult result)
         {
-            if (result.config.mode == RunMode.Endless)
-            {
-                data.endlessBest = Mathf.Max(data.endlessBest, result.score);
-                data.endlessDistance = Mathf.Max(data.endlessDistance, result.distance);
-                return;
-            }
-            int i = Mathf.Clamp(result.config.level, 1, LevelCount) - 1;
-            data.levelScores[i] = Mathf.Max(data.levelScores[i], result.score);
+            if (result.config.levelId < 1) return;
+            var record = data.GetOrCreateLevelRecord(result.config.levelId);
+            record.bestScore = Mathf.Max(record.bestScore, result.score);
             if (!result.completed) return;
-            data.levelStars[i] = Mathf.Max(data.levelStars[i], result.stars);
-            data.level = Mathf.Max(data.level, Mathf.Min(LevelCount, i + 2));
-            if (i == LevelCount - 1) data.campaignCompleted = true;
+            record.bestStars = Mathf.Max(record.bestStars, Mathf.Clamp(result.stars, 0, 3));
+            long next = result.config.levelId < long.MaxValue ? result.config.levelId + 1 : long.MaxValue;
+            data.highestUnlockedLevel = Math.Max(data.highestUnlockedLevel, next);
+        }
+        // The transaction holds SaveManager's lock while this snapshot is live.
+        public struct Snapshot
+        {
+            readonly long levelId, highestUnlockedLevel;
+            readonly bool hadRecord;
+            readonly int bestScore, bestStars;
+            public Snapshot(SaveData data, long levelId)
+            {
+                this.levelId = levelId;
+                highestUnlockedLevel = data.highestUnlockedLevel;
+                var record = data.FindLevelRecord(levelId);
+                hadRecord = record != null;
+                bestScore = record?.bestScore ?? 0;
+                bestStars = record?.bestStars ?? 0;
+            }
+            public void Restore(SaveData data)
+            {
+                data.highestUnlockedLevel = highestUnlockedLevel;
+                if (!hadRecord) data.RemoveLevelRecord(levelId);
+                else
+                {
+                    var record = data.GetOrCreateLevelRecord(levelId);
+                    record.bestScore = bestScore;
+                    record.bestStars = bestStars;
+                }
+            }
         }
     }
 }

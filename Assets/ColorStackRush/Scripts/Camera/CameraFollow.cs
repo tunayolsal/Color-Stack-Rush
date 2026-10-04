@@ -13,9 +13,9 @@ namespace ColorStackRush
         public static CameraFollow Instance { get; private set; }
 
         [Header("Framing")]
-        [SerializeField] Vector3 offset = new Vector3(0f, 7f, -9.5f);
-        [SerializeField] float pitchAngle = 32f;
-        [SerializeField] float xFollowFactor = 0.55f; // how much the camera tracks sideways
+        [SerializeField] Vector3 offset = new Vector3(0f, 10f, -10.5f);
+        [SerializeField] float pitchAngle = 38f;
+        [SerializeField] float xFollowFactor = 0.35f; // how much the camera tracks sideways
 
         [Header("Smoothing")]
         [SerializeField] float smoothTime = 0.18f;
@@ -43,7 +43,13 @@ namespace ColorStackRush
         void LateUpdate()
         {
             if (target == null) return;
-            transform.position = Vector3.SmoothDamp(transform.position, DesiredPosition(), ref velocity, smoothTime);
+            Vector3 desired = DesiredPosition();
+            Vector3 position = Vector3.SmoothDamp(transform.position, desired, ref velocity, smoothTime);
+            // Forward lag changes the player's screen position with speed.
+            // Keep the planned framing while smoothing lateral motion and bounce.
+            position.z = desired.z;
+            velocity.z = 0;
+            transform.position = position;
         }
 
         Vector3 DesiredPosition()

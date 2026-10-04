@@ -13,28 +13,35 @@ namespace ColorStackRush
         public RunResult LastResult { get; private set; }
         public int RunId { get; private set; }
         public bool ResultCommitted { get; private set; }
+        public bool ResultSaveFailed { get; private set; }
+        public bool ResultSavePending => resultSaveInFlight || (pendingResultAvailable && (State == GameState.Finish || State == GameState.Dying));
+        bool resultSaveInFlight, pendingResultAvailable;
+        RunResult pendingResult;
         bool slowMotionActive;
-        void Awake() { Instance = this; CurrentRun = RunConfig.Campaign(SaveManager.Data.level); }
+        void Awake() { Instance = this; CurrentRun = RunConfig.Level(SaveManager.Data.highestUnlockedLevel); }
         void OnEnable() { GameEvents.PlayerDied += OnPlayerDied; GameEvents.FinishReached += OnFinishReached; }
         void OnDisable() { GameEvents.PlayerDied -= OnPlayerDied; GameEvents.FinishReached -= OnFinishReached; CancelSequences(); if (Instance == this) Instance = null; Time.timeScale = 1; Time.fixedDeltaTime = .02f; }
         public void StartRun() => StartRun(CurrentRun);
         public void StartRun(RunConfig config)
         {
-            if (config.mode == RunMode.Campaign)
+            config = RunConfig.Level(config.levelId);
+            if (!Progression.IsUnlocked(SaveManager.Data, config.levelId) || !SaveManager.TryBeginTransaction()) return;
+            try
             {
-                config = RunConfig.Campaign(config.level);
-                if (config.level > SaveManager.Data.level) return;
+                CancelSequences();
+                RunId++;
+                ResultCommitted = false;
+                ResultSaveFailed = false;
+                resultSaveInFlight = pendingResultAvailable = false;
+                slowMotionActive = false;
+                CurrentRun = config;
+                SetState(GameState.MainMenu);
+                GameEvents.RaiseRunConfigured(config);
+                CurrencyManager.ResetRunCoins();
+                GameEvents.RaiseRunStarted();
+                SetState(GameState.Playing);
             }
-            CancelSequences();
-            RunId++;
-            ResultCommitted = false;
-            slowMotionActive = false;
-            CurrentRun = config;
-            SetState(GameState.MainMenu);
-            GameEvents.RaiseRunConfigured(config);
-            CurrencyManager.ResetRunCoins();
-            GameEvents.RaiseRunStarted();
-            SetState(GameState.Playing);
+            finally { SaveManager.EndTransaction(); }
         }
         void CancelSequences()
         {
@@ -44,10 +51,11 @@ namespace ColorStackRush
         public void PauseGame() { if (State == GameState.Playing) SetState(GameState.Paused); }
         public void ResumeGame() { if (State == GameState.Paused) SetState(GameState.Playing); }
         public void GoToMenu() { CancelSequences(); slowMotionActive = false; SaveManager.Save(); SetState(GameState.MainMenu); }
-        public void ContinueCampaign()
+        public void ContinueLevel()
         {
-            if (LastResult.config.level >= 18) { GoToMenu(); return; }
-            StartRun(RunConfig.Campaign(LastResult.config.level + 1));
+            if (!ResultCommitted || !LastResult.completed) return;
+            long next = LastResult.config.levelId < long.MaxValue ? LastResult.config.levelId + 1 : long.MaxValue;
+            StartRun(RunConfig.Level(next));
         }
         public void SetSlowMotion(bool active) { slowMotionActive = active; ApplyTimeScale(); }
         void SetState(GameState state) { State = state; ApplyTimeScale(); GameEvents.RaiseStateChanged(state); }
@@ -70,11 +78,10 @@ namespace ColorStackRush
             yield return new WaitForSecondsRealtime(.7f);
             if (id != RunId || State != GameState.Dying) yield break;
             CommitResult(false, 0);
-            SetState(GameState.GameOver);
         }
         void OnFinishReached()
         {
-            if (State != GameState.Playing || CurrentRun.mode == RunMode.Endless) return;
+            if (State != GameState.Playing) return;
             SetState(GameState.Finish);
             StartCoroutine(FinishSequence(RunId));
         }
@@ -102,19 +109,57 @@ namespace ColorStackRush
             yield return new WaitForSecondsRealtime(1.1f);
             if (id != RunId || State != GameState.Finish) yield break;
             CommitResult(true, climbed);
-            SetState(GameState.Victory);
         }
         void CommitResult(bool completed, int stairs)
         {
-            if (ResultCommitted) return;
-            ResultCommitted = true;
+            if (ResultCommitted || pendingResultAvailable || resultSaveInFlight) return;
             var score = ScoreManager.Instance;
             score.CommitRunResults();
-            LastResult = new RunResult { config = CurrentRun, score = score.Score, stairBonus = score.StairBonusTotal, coins = CurrencyManager.RunCoins,
+            pendingResult = new RunResult { config = CurrentRun, score = score.Score, stairBonus = score.StairBonusTotal, coins = CurrencyManager.RunCoins,
                 distance = completed ? CurrentRun.Length : PlayerController.Instance.Distance, completed = completed, stairs = stairs, stars = completed ? RunResult.StarsFor(stairs) : 0 };
-            Progression.Apply(SaveManager.Data, LastResult);
-            SaveManager.Save();
-            GameEvents.RaiseRunCompleted(LastResult);
+            pendingResultAvailable = true;
+            StartCoroutine(PersistResultWhenReady(RunId));
+        }
+        public void RetryResultSave()
+        {
+            if (!ResultSaveFailed || !pendingResultAvailable || resultSaveInFlight) return;
+            ResultSaveFailed = false;
+            SetState(pendingResult.completed ? GameState.Finish : GameState.Dying);
+            StartCoroutine(PersistResultWhenReady(RunId));
+        }
+        IEnumerator PersistResultWhenReady(int id)
+        {
+            while (true)
+            {
+                if (id != RunId || (State != GameState.Finish && State != GameState.Dying)) yield break;
+                if (SaveManager.TryBeginTransaction()) break;
+                yield return null;
+            }
+            resultSaveInFlight = true;
+            var result = pendingResult;
+            var data = SaveManager.Data;
+            var snapshot = new Progression.Snapshot(data, result.config.levelId);
+            Progression.Apply(data, result);
+            SaveManager.SaveAsync(success =>
+            {
+                if (!success) snapshot.Restore(data);
+                SaveManager.EndTransaction();
+                if (this == null || Instance != this || !isActiveAndEnabled || id != RunId) return;
+                resultSaveInFlight = false;
+                if (State != GameState.Finish && State != GameState.Dying) return;
+                if (!success)
+                {
+                    ResultSaveFailed = true;
+                    SetState(GameState.GameOver);
+                    return;
+                }
+                ResultCommitted = true;
+                ResultSaveFailed = false;
+                pendingResultAvailable = false;
+                LastResult = result;
+                GameEvents.RaiseRunCompleted(result);
+                SetState(result.completed ? GameState.Victory : GameState.GameOver);
+            });
         }
     }
 }

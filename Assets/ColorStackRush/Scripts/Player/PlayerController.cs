@@ -11,10 +11,6 @@ namespace ColorStackRush
     {
         public static PlayerController Instance { get; private set; }
 
-        [Header("Forward movement")]
-        [SerializeField] float baseSpeed = 9f;
-        [SerializeField] float acceleration = 0.08f;  // speed gained per second
-
         [Header("Steering")]
         [SerializeField] float laneHalfWidth = 2.6f;  // how far left/right the ball may go
         [SerializeField] float steerSmoothing = 14f;  // how quickly the ball chases the input
@@ -38,7 +34,7 @@ namespace ColorStackRush
             body = GetComponent<Rigidbody>();
             body.interpolation = RigidbodyInterpolation.Interpolate;
             ballVisual = transform.Find("Ball");
-            currentSpeed = baseSpeed;
+            currentSpeed = GameManager.Instance != null ? GameManager.Instance.CurrentRun.BaseSpeed : 10f;
         }
 
         void OnEnable() => GameEvents.RunStarted += ResetPlayer;
@@ -52,8 +48,8 @@ namespace ColorStackRush
 
             float dt = Time.fixedDeltaTime;
 
-            // Forward: slowly accelerating auto-run.
-            currentSpeed = Mathf.Min(GameManager.Instance.CurrentRun.MaxSpeed, currentSpeed + acceleration * dt);
+            // Difficulty belongs to the finite level, with a bounded fixed pace.
+            currentSpeed = Mathf.Min(18, GameManager.Instance.CurrentRun.BaseSpeed);
 
             // Steering: input moves an invisible target, ball smoothly chases it.
             if (SwipeInput.Instance != null)
@@ -79,7 +75,7 @@ namespace ColorStackRush
             transform.position = Vector3.zero;
             SwipeInput.Instance?.ResetInput();
             targetX = 0f;
-            currentSpeed = baseSpeed;
+            currentSpeed = GameManager.Instance != null ? GameManager.Instance.CurrentRun.BaseSpeed : 10f;
         }
     }
 }

@@ -17,7 +17,8 @@ namespace ColorStackRush
         {
             SaveManager.Load();
             ApplyQualitySettings();
-            for (int i = 0; i < 4; i++) { ColorSymbols.Shared((GameColor)i); ColorSymbols.SpriteFor((GameColor)i); MaterialCache.Get(ColorPalette.Get((GameColor)i)); }
+            for (int i = 0; i < 4; i++) MaterialCache.Get(ColorPalette.Get((GameColor)i));
+            PrefabArt.Warmup();
             ParticleFactory.Burst(Vector3.zero, Color.white, 0);
             SetupEnvironment();
 
@@ -63,9 +64,10 @@ namespace ColorStackRush
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = ColorPalette.Fog;
-            RenderSettings.fogStartDistance = 45f;
-            RenderSettings.fogEndDistance = 95f;
-            RenderSettings.ambientLight = new Color(0.72f, 0.72f, 0.78f);
+            RenderSettings.fogStartDistance = 55f;
+            RenderSettings.fogEndDistance = 105f;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(.38f, .43f, .50f);
 
             var light = FindFirstObjectByType<Light>();
             if (light == null)
@@ -74,9 +76,9 @@ namespace ColorStackRush
             light.type = LightType.Directional;
             light.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
             light.color = new Color(1f, 0.98f, 0.94f);
-            light.intensity = 1.05f;
+            light.intensity = .9f;
             light.shadows = LightShadows.Soft;
-            light.shadowStrength = 0.35f; // soft, pastel-friendly shadows
+            light.shadowStrength = .6f; // soft, pastel-friendly shadows
         }
 
         /// <summary>Ball + collect ring + shield orb + gameplay components, all primitives.</summary>
@@ -98,12 +100,18 @@ namespace ColorStackRush
             // Rolling ball visual.
             Primitives.Create(PrimitiveType.Sphere, player.transform,
                 new Vector3(0f, 0.5f, 0f), Vector3.one * 0.95f,
-                MaterialCache.Get(Color.white), "Ball");
+                MaterialCache.Get(ColorPalette.Get(GameColor.Pink)), "Ball");
 
             // Flat glowing ring under the ball showing the color to collect.
-            Primitives.Create(PrimitiveType.Cylinder, player.transform,
-                new Vector3(0f, 0.05f, 0f), new Vector3(1.5f, 0.03f, 1.5f),
-                MaterialCache.GetEmissive(ColorPalette.Get(GameColor.Pink), 0.8f), "ColorRing");
+            ToyMeshes.Ring(player.transform, "ColorRing",
+                new Vector3(0f, .08f, 0f), new Vector3(1.25f, 1f, 1.25f), MaterialCache.Get(ColorPalette.Get(GameColor.Pink)));
+            ToyMeshes.Ring(player.transform, "CosmeticRim", new Vector3(0f, .58f, 0f), new Vector3(.94f, .35f, .94f), MaterialCache.Get(new Color(.95f, .96f, 1f)));
+            var shadowMaterial = new Material(Shader.Find("Sprites/Default") ?? Shader.Find("Standard"))
+            { mainTexture = Resources.Load<Texture2D>("Art/Particles/circle_05"), color = new Color(0, 0, 0, .33f) };
+            var contact = Primitives.Create(PrimitiveType.Quad, player.transform, new Vector3(0, .025f, 0), Vector3.one * 1.75f, shadowMaterial, "ContactShadow");
+            contact.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            contact.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            contact.GetComponent<MeshRenderer>().receiveShadows = false;
 
             // Shield bubble (activated by PlayerVisuals when the power-up runs).
             Primitives.Create(PrimitiveType.Sphere, player.transform,
@@ -130,7 +138,7 @@ namespace ColorStackRush
 
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = ColorPalette.Sky;
-            cam.fieldOfView = 60f;
+            cam.fieldOfView = 45f;
             cam.nearClipPlane = 0.3f;
             cam.farClipPlane = 120f; // matches fog end; keeps draw distance cheap
 

@@ -136,6 +136,8 @@ namespace ColorStackRush
             return summaryBuilder.ToString();
         }
 
+        public float Remaining(PowerUpType type) => active.TryGetValue(type, out float seconds) ? seconds : 0;
+
         public static string NameFor(PowerUpType type)
         {
             switch (type)

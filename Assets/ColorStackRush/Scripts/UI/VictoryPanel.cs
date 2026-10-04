@@ -1,61 +1,34 @@
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace ColorStackRush
 {
-    /// <summary>Level-complete screen: score breakdown and next-level button.</summary>
     public class VictoryPanel : MonoBehaviour
     {
-        Text titleText;
-        Text scoreText;
-        Text bonusText;
-        Text coinsText;
-
+        Text titleText, scoreText, bonusText, coinsText, starsText;
         public void Build()
         {
-            var root = transform;
-            UIFactory.CreatePanel(root, "Dim", ColorPalette.UiDim);
-
-            var card = UIFactory.CreateImage(root, "Card", ColorPalette.UiCard,
-                Vector2.zero, new Vector2(760f, 1100f)).transform;
-
-            titleText = UIFactory.CreateText(card, "Title", "LEVEL 1 COMPLETE!", 48, ColorPalette.UiGood,
-                new Vector2(0f, 430f), new Vector2(700f, 140f));
-
-            UIFactory.CreateText(card, "ScoreLabel", "SCORE", 40, ColorPalette.UiText,
-                new Vector2(0f, 290f), new Vector2(400f, 50f));
-            scoreText = UIFactory.CreateText(card, "Score", "0", 96, ColorPalette.UiText,
-                new Vector2(0f, 210f), new Vector2(500f, 110f));
-
-            bonusText = UIFactory.CreateText(card, "Bonus", "STAIRS BONUS +0", 40, ColorPalette.Stairs,
-                new Vector2(0f, 95f), new Vector2(680f, 50f));
-
-            UIFactory.CreateImage(card, "CoinIcon", ColorPalette.Coin, new Vector2(-70f, 5f), Vector2.one * 44f, circle: true);
-            coinsText = UIFactory.CreateText(card, "Coins", "+0", 44, ColorPalette.UiText,
-                new Vector2(20f, 5f), new Vector2(200f, 60f));
-
-            UIFactory.CreateButton(card, "NextButton", "NEXT LEVEL", new Vector2(0f, -145f), new Vector2(500f, 140f),
-                ColorPalette.UiGood, () => GameManager.Instance.ContinueCampaign(), 52);
-            UIFactory.CreateButton(card, "Retry", "RETRY LEVEL", new Vector2(0, -285), new Vector2(500, 90), ColorPalette.Get(GameColor.Pink), () => GameManager.Instance.StartRun(), 36);
-
-            UIFactory.CreateButton(card, "MenuButton", "MAIN MENU", new Vector2(0f, -425f), new Vector2(500f, 100f),
-                ColorPalette.Get(GameColor.Blue), () => GameManager.Instance.GoToMenu(), 44);
+            UIFactory.CreatePanel(transform, "Dim", ColorPalette.UiDim);
+            var card = UIFactory.CreateImage(transform, "Card", ColorPalette.UiCard, Vector2.zero, new Vector2(850, 1110)).transform;
+            titleText = UIFactory.CreateText(card, "Title", "Bölüm tamamlandı!", 54, ColorPalette.UiGood, new Vector2(0, 425), new Vector2(760, 115));
+            starsText = UIFactory.CreateText(card, "Stars", "3 / 3 yıldız", 35, ColorPalette.UiText, new Vector2(0, 320), new Vector2(700, 60));
+            scoreText = UIFactory.CreateText(card, "Score", "0", 88, ColorPalette.UiText, new Vector2(0, 210), new Vector2(700, 115));
+            bonusText = UIFactory.CreateText(card, "Bonus", "", 29, ColorPalette.UiText, new Vector2(0, 105), new Vector2(760, 80), style: FontStyle.Normal);
+            coinsText = UIFactory.CreateText(card, "Coins", "+0 altın", 35, ColorPalette.UiText, new Vector2(0, 10), new Vector2(650, 60));
+            UIFactory.CreateButton(card, "NextButton", "Sonraki bölüm", new Vector2(0, -155), new Vector2(650, 135), ColorPalette.UiGood, () => GameManager.Instance.ContinueLevel(), 44);
+            UIFactory.CreateButton(card, "Retry", "Tekrar oyna", new Vector2(0, -310), new Vector2(650, 105), ColorPalette.Get(GameColor.Pink), () => GameManager.Instance.StartRun(), 38);
+            UIFactory.CreateButton(card, "MenuButton", "Ana menü", new Vector2(0, -445), new Vector2(650, 100), ColorPalette.Get(GameColor.Blue), () => GameManager.Instance.GoToMenu(), 38);
         }
-
         void OnEnable() => Refresh();
-
         void Refresh()
         {
             if (scoreText == null || ScoreManager.Instance == null) return;
-
             var result = GameManager.Instance.LastResult;
-            titleText.text = $"LEVEL {result.config.level} COMPLETE!\n{result.stars} / 3 STARS";
-            transform.Find("Card/NextButton/Label").GetComponent<Text>().text = result.config.level == 18 ? "BACK TO MENU" : "NEXT LEVEL";
-            scoreText.text = ScoreManager.Instance.Score.ToString();
-            bonusText.text = "RUN " + (ScoreManager.Instance.Score - ScoreManager.Instance.StairBonusTotal) + "  /  STAIRS +" + ScoreManager.Instance.StairBonusTotal;
-            coinsText.text = "+" + CurrencyManager.RunCoins;
-
-            Juice.PunchScale(titleText.transform, 0.35f, 0.4f);
+            titleText.text = "Bölüm " + result.config.levelId + " tamamlandı!";
+            starsText.text = result.stars + " / 3 yıldız";
+            scoreText.text = result.score.ToString();
+            bonusText.text = "Koşu puanı " + (result.score - result.stairBonus) + "\nMerdiven bonusu +" + result.stairBonus;
+            coinsText.text = "+" + result.coins + " altın";
+            Juice.PunchScale(titleText.transform, .15f, .3f);
         }
     }
 }

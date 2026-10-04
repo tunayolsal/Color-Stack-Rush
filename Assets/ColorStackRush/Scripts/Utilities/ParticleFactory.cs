@@ -17,7 +17,7 @@ namespace ColorStackRush
         public static void Burst(Vector3 position, Color color, int count, float speed = 4.5f, float size = 0.3f)
         {
             EnsureSystems();
-            count = QualityProfile.ParticleCount(count);
+            count = Mathf.Min(QualityProfile.ParticleCount(count), Mathf.Max(0, 150 - burstSystem.particleCount - confettiSystem.particleCount));
             for (int i = 0; i < count; i++)
             {
                 Vector3 dir = Random.onUnitSphere;
@@ -26,7 +26,7 @@ namespace ColorStackRush
                 emit.velocity = dir * Random.Range(speed * 0.5f, speed);
                 emit.startColor = color;
                 emit.startSize = Random.Range(size * 0.6f, size * 1.3f);
-                emit.startLifetime = Random.Range(0.35f, 0.7f);
+                emit.startLifetime = Random.Range(0.18f, 0.35f);
                 burstSystem.Emit(emit, 1);
             }
         }
@@ -35,7 +35,7 @@ namespace ColorStackRush
         public static void Confetti(Vector3 position, int count = 120)
         {
             EnsureSystems();
-            count = QualityProfile.ParticleCount(count);
+            count = Mathf.Min(QualityProfile.ParticleCount(count), Mathf.Max(0, 150 - burstSystem.particleCount - confettiSystem.particleCount));
             for (int i = 0; i < count; i++)
             {
                 var color = ColorPalette.Get((GameColor)Random.Range(0, 4));
@@ -43,7 +43,7 @@ namespace ColorStackRush
                 emit.velocity = new Vector3(Random.Range(-2f, 2f), Random.Range(1f, 5f), Random.Range(-2f, 2f));
                 emit.startColor = color;
                 emit.startSize = Random.Range(0.15f, 0.3f);
-                emit.startLifetime = Random.Range(1.2f, 2.2f);
+                emit.startLifetime = Random.Range(.8f, 1.4f);
                 emit.rotation = Random.Range(0f, 360f);
                 confettiSystem.Emit(emit, 1);
             }
@@ -52,8 +52,8 @@ namespace ColorStackRush
         static void EnsureSystems()
         {
             if (burstSystem != null) return;
-            burstSystem = BuildSystem("[FX_Burst]", MakeCircleTexture(), gravity: 0.6f);
-            confettiSystem = BuildSystem("[FX_Confetti]", null, gravity: 0.9f); // squares = paper
+            burstSystem = BuildSystem("[FX_Burst]", Resources.Load<Texture2D>("Art/Particles/spark_01") ?? MakeCircleTexture(), gravity: .4f);
+            confettiSystem = BuildSystem("[FX_Confetti]", Resources.Load<Texture2D>("Art/Particles/star_01"), gravity: .9f);
             emit = new ParticleSystem.EmitParams();
         }
 
@@ -68,7 +68,7 @@ namespace ColorStackRush
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.playOnAwake = false;
             main.loop = false;
-            main.maxParticles = 600;
+            main.maxParticles = 150;
             main.gravityModifier = gravity;
             main.startSpeed = 0f;
 

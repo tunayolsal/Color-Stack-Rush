@@ -11,30 +11,30 @@ namespace ColorStackRush
         // --- Gameplay colors (indexed by GameColor) ---
         static readonly Color[] gameColors =
         {
-            FromHex("FF9EC0"), // Pink
-            FromHex("7EC8F5"), // Blue
-            FromHex("FFD97A"), // Yellow
-            FromHex("8FE3B0")  // Green
+            FromHex("FF4F87"), // Pink
+            FromHex("279CF4"), // Blue
+            FromHex("FFD43B"), // Yellow
+            FromHex("35CD86")  // Green
         };
 
         // --- Environment ---
-        public static readonly Color Sky        = FromHex("DFF1FF");
-        public static readonly Color Ground     = FromHex("F4EFFA");
-        public static readonly Color GroundRail = FromHex("D9CBEE");
-        public static readonly Color Fog        = FromHex("E7F2FD");
+        public static readonly Color Sky        = FromHex("BCE9F5");
+        public static readonly Color Ground     = FromHex("A8BCCA");
+        public static readonly Color GroundRail = FromHex("728DA7");
+        public static readonly Color Fog        = FromHex("BCE9F5");
 
         // --- Objects ---
-        public static readonly Color Obstacle   = FromHex("FF8B7E"); // soft coral
-        public static readonly Color Coin       = FromHex("FFC84A");
-        public static readonly Color Stairs     = FromHex("B9A6F2");
+        public static readonly Color Obstacle   = FromHex("263D59"); // soft coral
+        public static readonly Color Coin       = FromHex("E8A21C");
+        public static readonly Color Stairs     = FromHex("8772E7");
 
         // --- UI ---
-        public static readonly Color UiBackground = FromHex("FFF7FA");
+        public static readonly Color UiBackground = FromHex("EDF5FC");
         public static readonly Color UiCard       = Color.white;
-        public static readonly Color UiText       = FromHex("4A4460");
-        public static readonly Color UiAccent     = FromHex("FF7DA9");
-        public static readonly Color UiGood       = FromHex("5FCF8B");
-        public static readonly Color UiBad        = FromHex("FF6B6B");
+        public static readonly Color UiText       = FromHex("19324D");
+        public static readonly Color UiAccent     = FromHex("FF4F87");
+        public static readonly Color UiGood       = FromHex("20996B");
+        public static readonly Color UiBad        = FromHex("ED594E");
         public static readonly Color UiDim        = new Color(0f, 0f, 0f, 0.55f);
 
         /// <summary>Returns the pastel Color for a gameplay GameColor.</summary>
@@ -46,7 +46,7 @@ namespace ColorStackRush
             switch (type)
             {
                 case PowerUpType.Magnet:      return FromHex("C89DF6");
-                case PowerUpType.DoubleCoins: return FromHex("FFC84A");
+                case PowerUpType.DoubleCoins: return FromHex("E8A21C");
                 case PowerUpType.Shield:      return FromHex("6FE0DC");
                 case PowerUpType.SlowMotion:  return FromHex("9FB7F0");
                 default:                      return FromHex("FFFFFF"); // LuckyBox

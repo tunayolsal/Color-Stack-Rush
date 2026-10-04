@@ -72,16 +72,61 @@ public static class ReleaseBuilder
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
         Build(BuildTarget.StandaloneWindows64, Argument("-outputPath", "Builds/Windows/ColorStackRush.exe"));
     }
+    [MenuItem("Tools/Color Stack Rush/Build Browser Preview")]
+    public static void BuildWebPreview()
+    {
+        if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.WebGL, BuildTarget.WebGL))
+            throw new InvalidOperationException("Install Web Build Support for Unity 6000.3.3f1.");
+        Prepare();
+        PlayerSettings.bundleVersion = "0.3.0";
+        PlayerSettings.SetScriptingBackend(NamedBuildTarget.WebGL, ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.WebGL, ManagedStrippingLevel.Minimal);
+        PlayerSettings.WebGL.template = "PROJECT:ColorStackRush";
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        // Sites static hosting does not apply _headers. Unity's bundled Brotli
+        // decoder also works on hosts without custom response headers.
+        PlayerSettings.WebGL.decompressionFallback = Argument("-nativeWebDecompression", "false") != "true";
+        PlayerSettings.WebGL.nameFilesAsHashes = true;
+        PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Off;
+        PlayerSettings.WebGL.dataCaching = true;
+        PlayerSettings.WebGL.threadsSupport = false;
+        PlayerSettings.WebGL.initialMemorySize = 64;
+        PlayerSettings.WebGL.maximumMemorySize = 512;
+        PlayerSettings.defaultScreenWidth = 540;
+        PlayerSettings.defaultScreenHeight = 960;
+        string output = Argument("-outputPath", "Builds/Web");
+        Build(BuildTarget.WebGL, output);
+        File.WriteAllText(Path.Combine(output, "_headers"),
+            "/Build/*.wasm.br\n  Content-Type: application/wasm\n  Content-Encoding: br\n" +
+            "/Build/*.js.br\n  Content-Type: application/javascript\n  Content-Encoding: br\n" +
+            "/Build/*.data.br\n  Content-Type: application/octet-stream\n  Content-Encoding: br\n" +
+            "/Build/*.unityweb\n  Content-Type: application/octet-stream\n" +
+            "/Build/*\n  Cache-Control: public, max-age=31536000, immutable\n" +
+            "/\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n");
+        long bytes = 0;
+        foreach (var file in Directory.GetFiles(output, "*", SearchOption.AllDirectories))
+        {
+            long length = new FileInfo(file).Length;
+            if (length > 25L * 1024 * 1024) throw new InvalidOperationException("Web asset exceeds 25 MiB: " + file);
+            bytes += length;
+        }
+        if (bytes > 25L * 1024 * 1024) Debug.LogWarning("[CSR Build] Preview download exceeds the 25 MiB target; optimize imported textures/audio before delivery.");
+    }
     static void Build(BuildTarget target, string output)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
+        Directory.CreateDirectory(target == BuildTarget.WebGL ? Path.GetFullPath(output) : Path.GetDirectoryName(Path.GetFullPath(output)));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None });
         Debug.Log($"[CSR Build] {target}: {report.summary.result}; errors={report.summary.totalErrors}; size={report.summary.totalSize}");
         if (report.summary.result != BuildResult.Succeeded) throw new InvalidOperationException("Player build failed");
-        File.WriteAllText(Path.ChangeExtension(output, ".build.json"), JsonUtility.ToJson(new BuildFacts {
+        bool directory = target == BuildTarget.WebGL;
+        long outputBytes = 0;
+        if (directory) foreach (var file in Directory.GetFiles(output, "*", SearchOption.AllDirectories)) outputBytes += new FileInfo(file).Length;
+        else outputBytes = new FileInfo(output).Length;
+        var namedTarget = target == BuildTarget.Android ? NamedBuildTarget.Android : directory ? NamedBuildTarget.WebGL : NamedBuildTarget.Standalone;
+        File.WriteAllText(directory ? Path.Combine(output, "build-info.json") : Path.ChangeExtension(output, ".build.json"), JsonUtility.ToJson(new BuildFacts {
             target = target.ToString(), unity = Application.unityVersion, version = PlayerSettings.bundleVersion, product = PlayerSettings.productName,
-            packageId = PlayerSettings.GetApplicationIdentifier(target == BuildTarget.Android ? NamedBuildTarget.Android : NamedBuildTarget.Standalone),
-            bytes = new FileInfo(output).Length, buildReportBytes = (long)report.summary.totalSize, errors = (int)report.summary.totalErrors, seconds = (float)report.summary.totalTime.TotalSeconds,
+            packageId = PlayerSettings.GetApplicationIdentifier(namedTarget),
+            bytes = outputBytes, buildReportBytes = (long)report.summary.totalSize, errors = (int)report.summary.totalErrors, seconds = (float)report.summary.totalTime.TotalSeconds,
             builtAtUtc = DateTime.UtcNow.ToString("o")
         }, true));
     }

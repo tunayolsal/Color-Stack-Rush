@@ -13,7 +13,7 @@ namespace ColorStackRush
         [Header("Stack")]
         [SerializeField] int startBlocks = 4;
         [SerializeField] float blockSize = 0.55f;
-        [SerializeField] float spacing = 0.72f;
+        [SerializeField] float spacing = 0.38f;
 
         [Header("Follow feel")]
         [SerializeField] float followSpeed = 14f; // higher = tighter snake
@@ -48,8 +48,8 @@ namespace ColorStackRush
                 float lag = followSpeed / (1f + i * 0.12f);
                 Vector3 p = seg.position;
                 p.x = Mathf.Lerp(p.x, ahead.x, lag * dt);
-                p.y = Mathf.Lerp(p.y, ahead.y + blockSize * 0.5f, lag * dt);
-                p.z = ahead.z - spacing;
+                p.y = transform.position.y + blockSize * 0.5f; // fixed height; never accumulate height down the chain
+                p.z = ahead.z - Mathf.Min(spacing, 6.2f / Mathf.Max(1, Count));
                 seg.position = p;
                 ahead = p;
             }
@@ -141,8 +141,7 @@ namespace ColorStackRush
 
         Transform CreateBlock()
         {
-            var go = Primitives.Create(PrimitiveType.Cube, container,
-                Vector3.zero, Vector3.one * blockSize, MaterialCache.Get(Color.white), "StackBlock");
+            var go = ToyMeshes.Block(container, "StackBlock", Vector3.zero, Vector3.one * blockSize, MaterialCache.Get(Color.white));
             return go.transform;
         }
 
