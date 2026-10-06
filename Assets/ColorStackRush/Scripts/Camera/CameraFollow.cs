@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ColorStackRush
 {
     /// <summary>
-    /// Smooth chase camera rig. Follows the player's Z fully and X partially,
+    /// Smooth chase camera rig. Follows the player's Z with a fixed lateral view,
     /// with a vertical "bounce" punch on collects for extra juice.
     /// Lives on the rig root; the actual Camera sits on a child (CameraShake).
     /// </summary>
@@ -15,7 +15,6 @@ namespace ColorStackRush
         [Header("Framing")]
         [SerializeField] Vector3 offset = new Vector3(0f, 10f, -10.5f);
         [SerializeField] float pitchAngle = 38f;
-        [SerializeField] float xFollowFactor = 0.35f; // how much the camera tracks sideways
 
         [Header("Smoothing")]
         [SerializeField] float smoothTime = 0.18f;
@@ -67,7 +66,10 @@ namespace ColorStackRush
             Vector3 desired = DesiredPosition();
             Vector3 position = Vector3.SmoothDamp(transform.position, desired, ref velocity, smoothTime);
             // Forward lag changes the player's screen position with speed.
-            // Keep the planned framing while smoothing lateral motion and bounce.
+            // Keep the road centred. Delayed lateral tracking makes a stopped
+            // player appear to move backwards after a swipe.
+            position.x = desired.x;
+            velocity.x = 0;
             position.z = desired.z;
             velocity.z = 0;
             transform.position = position;
@@ -76,7 +78,7 @@ namespace ColorStackRush
         Vector3 DesiredPosition()
         {
             return new Vector3(
-                target.position.x * xFollowFactor,
+                offset.x,
                 target.position.y + offset.y + bounceOffset,
                 target.position.z + offset.z);
         }

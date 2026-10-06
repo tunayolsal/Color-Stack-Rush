@@ -3,9 +3,8 @@ using UnityEngine;
 namespace ColorStackRush
 {
     /// <summary>
-    /// Moves the ball: constant auto-forward motion with gentle acceleration,
-    /// plus swipe-driven horizontal steering clamped to the road.
-    /// Movement is transform-based (kinematic) — cheap and deterministic on mobile.
+    /// Moves the kinematic ball forward at the level's pace and applies each
+    /// steering delta once. Rigidbody interpolation smooths the rendered motion.
     /// </summary>
     public class PlayerController : MonoBehaviour
     {
@@ -13,7 +12,6 @@ namespace ColorStackRush
 
         [Header("Steering")]
         [SerializeField] float laneHalfWidth = 2.6f;  // how far left/right the ball may go
-        [SerializeField] float steerSmoothing = 14f;  // how quickly the ball chases the input
 
         [Header("Visuals")]
         [SerializeField] float ballRadius = 0.5f;
@@ -21,7 +19,6 @@ namespace ColorStackRush
         Rigidbody body;
         Transform ballVisual;   // spinning sphere child
         float currentSpeed;
-        float targetX;
 
         /// <summary>Total distance travelled this run (world units).</summary>
         public float Distance => body != null ? body.position.z : transform.position.z;
@@ -51,13 +48,12 @@ namespace ColorStackRush
             // Difficulty belongs to the finite level, with a bounded fixed pace.
             currentSpeed = Mathf.Min(18, GameManager.Instance.CurrentRun.BaseSpeed);
 
-            // Steering: input moves an invisible target, ball smoothly chases it.
-            if (SwipeInput.Instance != null)
-                targetX = Mathf.Clamp(targetX + SwipeInput.Instance.ConsumeHorizontalDelta(), -laneHalfWidth, laneHalfWidth);
-
             Vector3 pos = body.position;
             pos.z += currentSpeed * dt;
-            pos.x = Mathf.Lerp(pos.x, targetX, 1f - Mathf.Exp(-steerSmoothing * dt));
+            // Apply relative movement to the actual position. An old target must
+            // never pull the player against a new swipe or keep steering after release.
+            float delta = SwipeInput.Instance != null ? SwipeInput.Instance.ConsumeHorizontalDelta() : 0;
+            pos.x = Mathf.Clamp(pos.x + delta, -laneHalfWidth, laneHalfWidth);
             body.MovePosition(pos);
 
             // Rolling animation: spin proportional to travel speed.
@@ -74,7 +70,6 @@ namespace ColorStackRush
             body.rotation = Quaternion.identity;
             transform.position = Vector3.zero;
             SwipeInput.Instance?.ResetInput();
-            targetX = 0f;
             currentSpeed = GameManager.Instance != null ? GameManager.Instance.CurrentRun.BaseSpeed : 10f;
         }
     }

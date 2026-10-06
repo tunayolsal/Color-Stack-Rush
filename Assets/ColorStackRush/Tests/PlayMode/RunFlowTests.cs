@@ -188,9 +188,10 @@ namespace ColorStackRush.Tests
                         var course = SpawnManager.Instance.CurrentCourse;
                         Assert.That(course, Is.Not.Null);
                         // The pointer is queued after Update and reaches steering
-                        // after the next dynamic input pass. Compensate that
-                        // render delay and the same 14/s smoothing as the player.
-                        float lookahead = Mathf.Min(4, PlayerController.Instance.CurrentSpeed * (1f / 14f + 2 * Time.deltaTime));
+                        // after the next dynamic input pass. Bound compensation
+                        // to that input delay and stay inside each gate's 1.4m exit hold.
+                        // Direct steering needs no smoothing lead.
+                        float lookahead = Mathf.Min(1f, PlayerController.Instance.CurrentSpeed * (2 * Time.deltaTime));
                         float nextTarget = course.SampleRouteX(PlayerController.Instance.Distance + lookahead);
                         state.position.x += (nextTarget - target) * Screen.width / 8.5f;
                         target = nextTarget;
