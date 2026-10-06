@@ -99,12 +99,14 @@ namespace ColorStackRush
             GameEvents.RaiseScorePopup(points, worldPos);
         }
 
-        /// <summary>Writes the high score into save data at the end of a run.</summary>
+        /// <summary>Compares this run with the level record before durable progression is committed.</summary>
         public void CommitRunResults()
         {
-            if (Score > SaveManager.Data.highScore)
+            var config = GameManager.Instance.CurrentRun;
+            int best = Progression.BestScore(SaveManager.Data, config.levelId);
+            if (Score > best)
             {
-                SaveManager.Data.highScore = Score;
+                // Progression owns the acknowledged write; legacy records remain archived.
                 IsNewBest = true;
             }
         }

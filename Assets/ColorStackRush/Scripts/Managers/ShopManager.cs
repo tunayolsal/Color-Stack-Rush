@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 namespace ColorStackRush
@@ -59,23 +60,57 @@ namespace ColorStackRush
         /// <summary>Buys a skin if affordable. Auto-selects it on success.</summary>
         public bool TryBuy(int index)
         {
-            if (IsUnlocked(index)) return false;
-            if (!CurrencyManager.TrySpend(GetSkin(index).cost)) return false;
+            bool result = true;
+            bool accepted = TryBuyAsync(index, ok => result = ok);
+            return accepted && result;
+        }
+
+        public bool TryBuyAsync(int index, Action<bool> completed)
+        {
+            if (index < 0 || index >= SkinCount || IsUnlocked(index)) return false;
+            int cost = GetSkin(index).cost;
+            if (SaveManager.Data.coins < cost) return false;
+            if (!SaveManager.TryBeginTransaction()) return false;
+            int previousSkin = SaveManager.Data.selectedSkin;
+            SaveManager.Data.coins -= cost;
 
             SaveManager.Data.unlockedSkins.Add(index);
-            SaveManager.Save();
-            AudioManager.Instance?.PlaySfx(SfxId.Buy);
-            Select(index);
+            SaveManager.Data.selectedSkin = index;
+            SaveManager.SaveAsync(ok =>
+            {
+                if (!ok)
+                {
+                    // Refund only this purchase; do not erase coins earned while the save was pending.
+                    SaveManager.Data.coins += cost;
+                    SaveManager.Data.unlockedSkins.Remove(index);
+                    SaveManager.Data.selectedSkin = previousSkin;
+                }
+                SaveManager.EndTransaction();
+                GameEvents.RaiseCoinsChanged(SaveManager.Data.coins);
+                if (ok) { AudioManager.Instance?.PlaySfx(SfxId.Buy); GameEvents.RaiseSkinSelected(index); }
+                completed?.Invoke(ok);
+            });
             return true;
         }
 
         /// <summary>Equips an unlocked skin and persists the choice.</summary>
         public void Select(int index)
         {
-            if (!IsUnlocked(index)) return;
+            SelectAsync(index, null);
+        }
+        public bool SelectAsync(int index, Action<bool> completed)
+        {
+            if (!IsUnlocked(index) || !SaveManager.TryBeginTransaction()) return false;
+            int previous = SaveManager.Data.selectedSkin;
             SaveManager.Data.selectedSkin = index;
-            SaveManager.Save();
-            GameEvents.RaiseSkinSelected(index);
+            SaveManager.SaveAsync(ok =>
+            {
+                if (!ok) SaveManager.Data.selectedSkin = previous;
+                SaveManager.EndTransaction();
+                GameEvents.RaiseSkinSelected(SaveManager.Data.selectedSkin);
+                completed?.Invoke(ok);
+            });
+            return true;
         }
     }
 }

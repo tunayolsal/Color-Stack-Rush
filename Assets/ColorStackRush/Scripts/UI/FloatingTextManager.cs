@@ -30,7 +30,6 @@ namespace ColorStackRush
             GameEvents.ScorePopup += OnScorePopup;
             GameEvents.CoinCollected += OnCoinCollected;
             GameEvents.BlockCollected += OnBlockCollected;
-            GameEvents.PowerUpStarted += OnPowerUpStarted;
         }
 
         void OnDisable()
@@ -38,7 +37,6 @@ namespace ColorStackRush
             GameEvents.ScorePopup -= OnScorePopup;
             GameEvents.CoinCollected -= OnCoinCollected;
             GameEvents.BlockCollected -= OnBlockCollected;
-            GameEvents.PowerUpStarted -= OnPowerUpStarted;
         }
 
         void OnScorePopup(int points, Vector3 pos) => Show("+" + points, pos + Vector3.up, Color.white, 1.1f);
@@ -46,15 +44,11 @@ namespace ColorStackRush
 
         void OnBlockCollected(bool correct, Vector3 pos)
         {
-            if (!correct) Show("WRONG!", pos + Vector3.up, ColorPalette.UiBad, 1f);
-        }
-
-        void OnPowerUpStarted(PowerUpType type, float duration)
-        {
-            if (PlayerController.Instance != null)
-                Show(PowerUpManager.NameFor(type),
-                    PlayerController.Instance.transform.position + Vector3.up * 2f,
-                    ColorPalette.GetPowerUp(type), 1.2f);
+            if (!correct)
+            {
+                int damage = GameManager.Instance != null ? GameManager.Instance.CurrentRun.Difficulty.WrongColorDamage : 2;
+                Show("-" + damage, pos + Vector3.up, ColorPalette.UiBad, 1f);
+            }
         }
 
         /// <summary>Spawns a floating text that rises, faces the camera and fades out.</summary>
@@ -62,7 +56,7 @@ namespace ColorStackRush
         {
             TextMesh tm = pool.Count > 0 ? pool.Pop() : WorldText.Create(container, "", Vector3.zero, Color.white);
             tm.text = text;
-            tm.characterSize = 0.1f * size;
+            tm.characterSize = 0.035f * size;
             tm.transform.position = worldPos;
             tm.gameObject.SetActive(true);
             StartCoroutine(Animate(tm, color));

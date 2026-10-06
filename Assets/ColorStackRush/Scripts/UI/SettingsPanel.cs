@@ -1,106 +1,91 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace ColorStackRush
 {
-    /// <summary>
-    /// Settings overlay: music/SFX volume sliders, mute toggles, haptics
-    /// toggle and a progress-reset button. Everything persists via SaveManager.
-    /// </summary>
     public class SettingsPanel : MonoBehaviour
     {
-        Slider musicSlider;
-        Slider sfxSlider;
-        Text musicToggleLabel;
-        Text sfxToggleLabel;
-        Text hapticsToggleLabel;
-
+        Slider musicSlider, sfxSlider;
+        Text musicLabel, sfxLabel, hapticsLabel, motionLabel, qualityLabel, resetLabel;
+        bool resetConfirmed;
+        bool operationPending;
+        Button[] buttons;
         public void Build()
         {
-            var root = transform;
-            UIFactory.CreatePanel(root, "Dim", ColorPalette.UiDim);
-
-            var card = UIFactory.CreateImage(root, "Card", ColorPalette.UiCard,
-                Vector2.zero, new Vector2(800f, 1100f)).transform;
-
-            UIFactory.CreateText(card, "Title", "SETTINGS", 68, ColorPalette.UiText,
-                new Vector2(0f, 440f), new Vector2(600f, 90f));
-
-            // --- Music ---
-            UIFactory.CreateText(card, "MusicLabel", "MUSIC VOLUME", 38, ColorPalette.UiText,
-                new Vector2(0f, 330f), new Vector2(500f, 50f));
-            musicSlider = UIFactory.CreateSlider(card, "MusicSlider", new Vector2(0f, 260f), new Vector2(600f, 60f),
-                SaveManager.Data.musicVolume, v => AudioManager.Instance.SetMusicVolume(v));
-
-            var musicToggle = UIFactory.CreateButton(card, "MusicToggle", "", new Vector2(0f, 165f), new Vector2(320f, 90f),
-                ColorPalette.Get(GameColor.Blue), ToggleMusic, 36);
-            musicToggleLabel = musicToggle.GetComponentInChildren<Text>();
-
-            // --- SFX ---
-            UIFactory.CreateText(card, "SfxLabel", "SFX VOLUME", 38, ColorPalette.UiText,
-                new Vector2(0f, 60f), new Vector2(500f, 50f));
-            sfxSlider = UIFactory.CreateSlider(card, "SfxSlider", new Vector2(0f, -10f), new Vector2(600f, 60f),
-                SaveManager.Data.sfxVolume, v => AudioManager.Instance.SetSfxVolume(v));
-
-            var sfxToggle = UIFactory.CreateButton(card, "SfxToggle", "", new Vector2(0f, -105f), new Vector2(320f, 90f),
-                ColorPalette.Get(GameColor.Blue), ToggleSfx, 36);
-            sfxToggleLabel = sfxToggle.GetComponentInChildren<Text>();
-
-            // --- Haptics ---
-            var hapticsToggle = UIFactory.CreateButton(card, "HapticsToggle", "", new Vector2(0f, -240f), new Vector2(420f, 90f),
-                ColorPalette.Get(GameColor.Green), ToggleHaptics, 36);
-            hapticsToggleLabel = hapticsToggle.GetComponentInChildren<Text>();
-
-            // --- Danger zone ---
-            UIFactory.CreateButton(card, "ResetButton", "RESET PROGRESS", new Vector2(0f, -370f), new Vector2(420f, 80f),
-                ColorPalette.UiBad, ResetProgress, 30);
-
-            UIFactory.CreateButton(card, "CloseButton", "CLOSE", new Vector2(0f, -490f), new Vector2(420f, 100f),
-                ColorPalette.UiAccent, () => UIManager.Instance.CloseOverlays(), 40);
+            UIFactory.CreatePanel(transform, "Dim", ColorPalette.UiDim);
+            var card = UIFactory.CreateImage(transform, "Card", ColorPalette.UiCard, Vector2.zero, new Vector2(840, 1440)).transform;
+            UIFactory.CreateText(card, "Title", "Ayarlar", 62, ColorPalette.UiText, new Vector2(0, 610), new Vector2(700, 85));
+            UIFactory.CreateText(card, "MusicVolume", "Müzik seviyesi", 30, ColorPalette.UiText, new Vector2(0, 505), new Vector2(600, 50));
+            musicSlider = UIFactory.CreateSlider(card, "MusicSlider", new Vector2(0, 445), new Vector2(600, 55), SaveManager.Data.musicVolume, v => AudioManager.Instance.SetMusicVolume(v));
+            musicLabel = Button(card, "Music", 355, () => { AudioManager.Instance.SetMusicOn(!SaveManager.Data.musicOn); Labels(); });
+            UIFactory.CreateText(card, "SoundVolume", "Efekt seviyesi", 30, ColorPalette.UiText, new Vector2(0, 265), new Vector2(600, 50));
+            sfxSlider = UIFactory.CreateSlider(card, "SfxSlider", new Vector2(0, 210), new Vector2(600, 55), SaveManager.Data.sfxVolume, v => AudioManager.Instance.SetSfxVolume(v));
+            sfxLabel = Button(card, "Sfx", 130, () => { AudioManager.Instance.SetSfxOn(!SaveManager.Data.sfxOn); Labels(); });
+            hapticsLabel = Button(card, "Haptics", 20, () => { SaveManager.Data.hapticsOn = !SaveManager.Data.hapticsOn; SaveManager.Save(); Labels(); });
+            motionLabel = Button(card, "Motion", -90, () => { SaveManager.Data.reducedMotion = !SaveManager.Data.reducedMotion; SaveManager.Save(); Labels(); });
+            qualityLabel = Button(card, "Quality", -200, () => { SaveManager.Data.lowQuality = !SaveManager.Data.lowQuality; SaveManager.Save(); QualityProfile.Apply(); Labels(); });
+            Button(card, "Tutorial", -310, ReplayTutorial).text = "Öğreticiyi tekrar oyna";
+            resetLabel = Button(card, "Reset", -420, Reset);
+            UIFactory.CreateButton(card, "Close", "Kapat", new Vector2(0, -565), new Vector2(510, 100), ColorPalette.UiAccent, () => UIManager.Instance.CloseOverlays(), 40);
+            Labels();
+            buttons = card.GetComponentsInChildren<Button>();
         }
-
-        /// <summary>Syncs the widgets with saved values when the overlay opens.</summary>
+        Text Button(Transform card, string name, float y, UnityEngine.Events.UnityAction action) => UIFactory.CreateButton(card, name, "", new Vector2(0, y), new Vector2(600, 90), ColorPalette.Get(GameColor.Blue), action, 32).GetComponentInChildren<Text>();
         public void Refresh()
         {
             if (musicSlider == null) return;
-            var d = SaveManager.Data;
-            musicSlider.SetValueWithoutNotify(d.musicVolume);
-            sfxSlider.SetValueWithoutNotify(d.sfxVolume);
-            UpdateToggleLabels();
+            resetConfirmed = false;
+            musicSlider.SetValueWithoutNotify(SaveManager.Data.musicVolume); sfxSlider.SetValueWithoutNotify(SaveManager.Data.sfxVolume); Labels();
         }
-
-        void UpdateToggleLabels()
+        void Labels()
         {
             var d = SaveManager.Data;
-            musicToggleLabel.text = d.musicOn ? "MUSIC: ON" : "MUSIC: OFF";
-            sfxToggleLabel.text = d.sfxOn ? "SFX: ON" : "SFX: OFF";
-            hapticsToggleLabel.text = d.hapticsOn ? "HAPTICS: ON" : "HAPTICS: OFF";
+            musicLabel.text = "Müzik: " + (d.musicOn ? "Açık" : "Kapalı"); sfxLabel.text = "Ses: " + (d.sfxOn ? "Açık" : "Kapalı");
+            hapticsLabel.text = "Titreşim: " + (d.hapticsOn ? "Açık" : "Kapalı"); motionLabel.text = "Azaltılmış hareket: " + (d.reducedMotion ? "Açık" : "Kapalı");
+            qualityLabel.text = d.lowQuality ? "Kalite: Hafif / 30 FPS" : "Kalite: Yüksek / 60 FPS";
+            resetLabel.text = resetConfirmed ? "Sıfırlamayı onayla" : "İlerlemeyi sıfırla";
         }
-
-        void ToggleMusic()
+        void SetPending(bool value)
         {
-            AudioManager.Instance.SetMusicOn(!SaveManager.Data.musicOn);
-            UpdateToggleLabels();
+            operationPending = value;
+            foreach (var button in buttons) button.interactable = !value;
+            musicSlider.interactable = sfxSlider.interactable = !value;
         }
-
-        void ToggleSfx()
+        void ReplayTutorial()
         {
-            AudioManager.Instance.SetSfxOn(!SaveManager.Data.sfxOn);
-            UpdateToggleLabels();
+            if (operationPending || !SaveManager.TryBeginTransaction()) return;
+            bool previous = SaveManager.Data.tutorialCompleted;
+            SaveManager.Data.tutorialCompleted = false;
+            SetPending(true);
+            SaveManager.SaveAsync(ok =>
+            {
+                if (!ok) SaveManager.Data.tutorialCompleted = previous;
+                SaveManager.EndTransaction();
+                if (this == null) return;
+                SetPending(false);
+                if (ok) StartCoroutine(StartTutorialWhenSaved());
+                else resetLabel.text = "Kayıt tamamlanamadı. Tekrar dene.";
+            });
         }
-
-        void ToggleHaptics()
+        IEnumerator StartTutorialWhenSaved()
         {
-            SaveManager.Data.hapticsOn = !SaveManager.Data.hapticsOn;
-            SaveManager.Save();
-            UpdateToggleLabels();
+            while (SaveManager.IsSaving || SaveManager.IsTransactionPending) yield return null;
+            UIManager.Instance.CloseOverlays();
+            GameManager.Instance.StartRun(RunConfig.Level(1));
         }
-
-        void ResetProgress()
+        void Reset()
         {
-            SaveManager.DeleteAll();
-            AudioManager.Instance.ApplySettings();
-            Refresh();
+            if (operationPending || SaveManager.IsSaving || SaveManager.IsTransactionPending) return;
+            if (!resetConfirmed) { resetConfirmed = true; Labels(); return; }
+            SetPending(true); resetLabel.text = "Kaydediliyor…";
+            bool accepted = SaveManager.DeleteAllAsync(ok =>
+            {
+                if (this == null) return;
+                SetPending(false);
+                if (ok) { AudioManager.Instance.ApplySettings(); QualityProfile.Apply(); Refresh(); }
+                else { Refresh(); resetLabel.text = "Sıfırlanamadı. Tekrar dene."; }
+            });
+            if (!accepted) { SetPending(false); Refresh(); resetLabel.text = "Başka bir kayıt sürüyor. Tekrar dene."; }
         }
     }
 }

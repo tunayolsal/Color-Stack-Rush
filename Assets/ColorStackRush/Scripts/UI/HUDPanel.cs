@@ -1,140 +1,131 @@
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace ColorStackRush
 {
-    /// <summary>
-    /// In-game overlay: score, wallet, combo, stack health, the "collect this
-    /// color" indicator, active power-up timers and the pause button.
-    /// </summary>
     public class HUDPanel : MonoBehaviour
     {
-        Text scoreText;
-        Text coinsText;
-        Text comboText;
-        Text stackText;
-        Text powerUpText;
-        Image colorIndicator;
-
-        float powerUpRefreshTimer;
-
+        Text score, wallet, stack, combo, active, next, progress, tutorial;
+        Image progressFill, colorFill, nextFill;
+        readonly float[] powerSeconds = new float[4];
+        readonly Text[] powerLabels = new Text[4];
+        readonly GameObject[] powerCards = new GameObject[4];
+        float timer;
+        int lastMeters = -1, tutorialStep;
+        bool showTutorial;
+        GameObject tutorialCard;
         public void Build()
         {
-            var root = transform;
-
-            // Score, top-center.
-            scoreText = UIFactory.CreateText(root, "Score", "0", 84, ColorPalette.UiText,
-                new Vector2(0f, -110f), new Vector2(500f, 100f), new Vector2(0.5f, 1f));
-
-            // Wallet, top-right.
-            UIFactory.CreateImage(root, "CoinIcon", ColorPalette.Coin, new Vector2(-170f, -70f), Vector2.one * 40f, new Vector2(1f, 1f), circle: true);
-            coinsText = UIFactory.CreateText(root, "Coins", "0", 42, ColorPalette.UiText,
-                new Vector2(-95f, -70f), new Vector2(140f, 60f), new Vector2(1f, 1f));
-
-            // Pause button under the wallet.
-            UIFactory.CreateButton(root, "PauseButton", "II", new Vector2(-90f, -190f), new Vector2(110f, 110f),
-                WithAlpha(ColorPalette.UiText, 0.65f), () => GameManager.Instance.PauseGame(), 44, null, new Vector2(1f, 1f));
-
-            // "Collect this color" indicator, top-left.
-            colorIndicator = UIFactory.CreateImage(root, "ColorIndicator", Color.white,
-                new Vector2(110f, -110f), Vector2.one * 110f, new Vector2(0f, 1f));
-            UIFactory.CreateText(root, "CollectLabel", "COLLECT", 28, ColorPalette.UiText,
-                new Vector2(110f, -195f), new Vector2(200f, 40f), new Vector2(0f, 1f));
-
-            // Combo banner under the score (hidden until combo >= 2).
-            comboText = UIFactory.CreateText(root, "Combo", "", 56, ColorPalette.UiAccent,
-                new Vector2(0f, -210f), new Vector2(500f, 70f), new Vector2(0.5f, 1f));
-
-            // Stack health, bottom-left.
-            stackText = UIFactory.CreateText(root, "Stack", "STACK 0", 46, ColorPalette.UiText,
-                new Vector2(150f, 90f), new Vector2(280f, 60f), new Vector2(0f, 0f));
-
-            // Active power-up timers, bottom-center.
-            powerUpText = UIFactory.CreateText(root, "PowerUps", "", 34, ColorPalette.UiText,
-                new Vector2(0f, 180f), new Vector2(800f, 50f), new Vector2(0.5f, 0f));
-
-            SyncAll(); // elements exist now: show real values immediately
+            UIFactory.CreateImage(transform, "Header", new Color(1, 1, 1, .96f), new Vector2(0, -14), new Vector2(1015, 290), new Vector2(.5f, 1));
+            colorFill = UIFactory.CreateImage(transform, "ActiveColor", ColorPalette.Get(GameColor.Pink), new Vector2(112, -55), new Vector2(82, 82), new Vector2(0, 1));
+            active = UIFactory.CreateText(transform, "Collect", "PEMBE", 32, ColorPalette.UiText, new Vector2(63, -144), new Vector2(180, 44), new Vector2(0, 1));
+            score = UIFactory.CreateText(transform, "Score", "0", 54, ColorPalette.UiText, new Vector2(0, -70), new Vector2(440, 72), new Vector2(.5f, 1));
+            UIFactory.CreateText(transform, "ScoreCaption", "PUAN", 32, ColorPalette.UiText, new Vector2(0, -22), new Vector2(220, 40), new Vector2(.5f, 1));
+            combo = UIFactory.CreateText(transform, "Combo", "", 32, ColorPalette.UiAccent, new Vector2(0, -144), new Vector2(360, 42), new Vector2(.5f, 1));
+            wallet = UIFactory.CreateText(transform, "Wallet", "0", 32, ColorPalette.UiText, new Vector2(-200, -60), new Vector2(145, 45), new Vector2(1, 1));
+            wallet.resizeTextForBestFit = true; wallet.resizeTextMinSize = 24; wallet.resizeTextMaxSize = 32;
+            UIFactory.CreateImage(transform, "Coin", ColorPalette.Coin, new Vector2(-360, -70), Vector2.one * 25, new Vector2(1, 1), circle: true);
+            UIFactory.CreateButton(transform, "Pause", "II", new Vector2(-95, -55), new Vector2(100, 115), ColorPalette.Get(GameColor.Blue), () => GameManager.Instance.PauseGame(), 35, anchor: new Vector2(1, 1));
+            var bar = UIFactory.CreateImage(transform, "ProgressTrack", new Color(.77f, .85f, .91f), new Vector2(0, -190), new Vector2(945, 10), new Vector2(.5f, 1));
+            progressFill = UIFactory.CreateImage(bar.transform, "Fill", ColorPalette.Get(GameColor.Green), Vector2.zero, Vector2.zero);
+            progressFill.rectTransform.anchorMin = Vector2.zero; progressFill.rectTransform.anchorMax = Vector2.one;
+            progressFill.rectTransform.offsetMin = progressFill.rectTransform.offsetMax = Vector2.zero;
+            progress = UIFactory.CreateText(transform, "Progress", "", 32, ColorPalette.UiText, new Vector2(0, -245), new Vector2(850, 45), new Vector2(.5f, 1));
+            nextFill = UIFactory.CreateImage(transform, "NextColor", ColorPalette.Get(GameColor.Blue), new Vector2(0, -310), new Vector2(365, 68), new Vector2(.5f, 1));
+            next = UIFactory.CreateText(nextFill.transform, "Label", "", 32, ColorPalette.UiText, Vector2.zero, new Vector2(345, 60));
+            UIFactory.CreateImage(transform, "StackCard", new Color(1, 1, 1, .94f), new Vector2(190, 90), new Vector2(315, 90), new Vector2(0, 0));
+            stack = UIFactory.CreateText(transform, "Stack", "", 31, ColorPalette.UiText, new Vector2(190, 90), new Vector2(300, 75), new Vector2(0, 0));
+            tutorialCard = UIFactory.CreateImage(transform, "TutorialCard", new Color(1, 1, 1, .94f), new Vector2(0, -400), new Vector2(950, 105), new Vector2(.5f, 1)).gameObject;
+            tutorial = UIFactory.CreateText(transform, "Tutorial", "", 29, ColorPalette.UiText, new Vector2(0, -405), new Vector2(920, 95), new Vector2(.5f, 1));
+            for (int i = 0; i < 4; i++)
+            {
+                var card = UIFactory.CreateImage(transform, "Power" + i, Color.white, new Vector2(-195, 85 + i * 76), new Vector2(315, 65), new Vector2(1, 0));
+                powerCards[i] = card.gameObject;
+                powerLabels[i] = UIFactory.CreateText(card.transform, "Label", "", 32, ColorPalette.UiText, Vector2.zero, new Vector2(300, 58));
+                card.gameObject.SetActive(false);
+            }
+            Sync();
         }
-
         void OnEnable()
         {
-            GameEvents.ScoreChanged += OnScoreChanged;
-            GameEvents.CoinsChanged += OnCoinsChanged;
-            GameEvents.ComboChanged += OnComboChanged;
-            GameEvents.StackChanged += OnStackChanged;
-            GameEvents.ActiveColorChanged += OnActiveColorChanged;
-            SyncAll();
+            GameEvents.ScoreChanged += Score; GameEvents.CoinsChanged += Wallet; GameEvents.StackChanged += Stack; GameEvents.ComboChanged += Combo;
+            GameEvents.ActiveColorChanged += ColorChanged; GameEvents.RunStarted += BeginTutorial; GameEvents.BlockCollected += TutorialBlock; GameEvents.RunCompleted += EndTutorial;
+            GameEvents.PowerUpStarted += PowerStarted; GameEvents.PowerUpEnded += PowerEnded; Sync();
         }
-
-        /// <summary>Syncs every readout so re-opening the HUD never shows stale values.</summary>
-        void SyncAll()
-        {
-            if (scoreText == null) return; // Build() hasn't run yet (first OnEnable)
-            if (ScoreManager.Instance != null) OnScoreChanged(ScoreManager.Instance.Score);
-            OnCoinsChanged(SaveManager.Data.coins);
-            if (ColorManager.Instance != null) OnActiveColorChanged(ColorManager.Instance.ActiveColor);
-        }
-
         void OnDisable()
         {
-            GameEvents.ScoreChanged -= OnScoreChanged;
-            GameEvents.CoinsChanged -= OnCoinsChanged;
-            GameEvents.ComboChanged -= OnComboChanged;
-            GameEvents.StackChanged -= OnStackChanged;
-            GameEvents.ActiveColorChanged -= OnActiveColorChanged;
+            GameEvents.ScoreChanged -= Score; GameEvents.CoinsChanged -= Wallet; GameEvents.StackChanged -= Stack; GameEvents.ComboChanged -= Combo;
+            GameEvents.ActiveColorChanged -= ColorChanged; GameEvents.RunStarted -= BeginTutorial; GameEvents.BlockCollected -= TutorialBlock; GameEvents.RunCompleted -= EndTutorial;
+            GameEvents.PowerUpStarted -= PowerStarted; GameEvents.PowerUpEnded -= PowerEnded;
         }
-
+        void Sync()
+        {
+            if (score == null) return;
+            if (ScoreManager.Instance != null) { Score(ScoreManager.Instance.Score); Combo(ScoreManager.Instance.Combo); }
+            Wallet(SaveManager.Data.coins);
+            if (PlayerController.Instance != null) Stack(PlayerController.Instance.GetComponent<PlayerStack>().Count);
+            if (ColorManager.Instance != null) ColorChanged(ColorManager.Instance.ActiveColor);
+            BeginTutorial(); RefreshProgress(); RefreshTimers();
+        }
+        void Score(int value) { if (score != null) score.text = value.ToString(); }
+        void Wallet(int value) { if (wallet != null) wallet.text = value.ToString(); }
+        void Stack(int value) { if (stack != null) { stack.text = "BLOK " + value + " / 32"; stack.color = value <= 2 ? ColorPalette.UiBad : ColorPalette.UiText; } }
+        void Combo(int value) { if (combo != null) combo.text = value >= 2 ? "KOMBO ×" + ScoreManager.Instance.Multiplier : ""; }
+        void ColorChanged(GameColor color) { if (active == null) return; active.text = UiLabels.ColorName(color); colorFill.color = ColorPalette.Get(color); }
+        void BeginTutorial()
+        {
+            if (tutorial == null || GameManager.Instance == null) return;
+            showTutorial = GameManager.Instance.CurrentRun.levelId == 1 && !SaveManager.Data.tutorialCompleted;
+            tutorialCard.SetActive(showTutorial);
+            tutorialStep = 0; lastMeters = -1;
+            tutorial.text = showTutorial ? "Sağa ve sola sürükle" : "";
+        }
+        void TutorialBlock(bool correct, Vector3 position)
+        {
+            if (!showTutorial || !correct || tutorialStep < 1) return;
+            tutorialStep = 2; tutorial.text = "Diğer renklerden uzak dur\nHer yanlış renk iki blok götürür";
+        }
+        void EndTutorial(RunResult result)
+        {
+            if (!showTutorial || !result.completed) return;
+            SaveManager.Data.tutorialCompleted = true; SaveManager.Save(); tutorial.text = ""; showTutorial = false; tutorialCard.SetActive(false);
+        }
+        void PowerStarted(PowerUpType type, float duration) { if ((int)type < 4) powerSeconds[(int)type] = duration; }
+        void PowerEnded(PowerUpType type) { if ((int)type < 4) powerSeconds[(int)type] = 0; }
         void Update()
         {
-            // Power-up timers change every second; refresh at 4 Hz to avoid
-            // building strings every frame.
-            powerUpRefreshTimer -= Time.unscaledDeltaTime;
-            if (powerUpRefreshTimer <= 0f)
+            var player = PlayerController.Instance;
+            if (player == null || score == null) return;
+            if (showTutorial && tutorialStep == 0 && Mathf.Abs(player.transform.position.x) > .3f) { tutorialStep = 1; tutorial.text = "Oyuncuyla aynı renkteki blokları topla"; }
+            if (GameManager.Instance.State == GameState.Playing) for (int i = 0; i < 4; i++) powerSeconds[i] = Mathf.Max(0, powerSeconds[i] - Time.deltaTime);
+            RefreshProgress(); timer -= Time.unscaledDeltaTime;
+            if (timer <= 0) { timer = .2f; RefreshTimers(); }
+        }
+        void RefreshProgress()
+        {
+            if (PlayerController.Instance == null || GameManager.Instance == null) return;
+            int meters = (int)PlayerController.Instance.Distance;
+            if (meters == lastMeters) return;
+            lastMeters = meters;
+            var config = GameManager.Instance.CurrentRun;
+            progress.text = "Bölüm " + config.levelId + "  ·  " + Mathf.Clamp(Mathf.RoundToInt(meters / config.Length * 100), 0, 100) + "%";
+            progressFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(meters / config.Length), 1);
+        }
+        void RefreshTimers()
+        {
+            var color = ColorManager.Instance;
+            if (color != null)
             {
-                powerUpRefreshTimer = 0.25f;
-                if (powerUpText != null && PowerUpManager.Instance != null)
-                    powerUpText.text = PowerUpManager.Instance.GetActiveSummary();
+                nextFill.gameObject.SetActive(color.HasWarning);
+                next.text = "Sıradaki: " + UiLabels.ColorName(color.NextColor) + "  " + Mathf.CeilToInt(color.WarningSeconds) + " sn";
+                nextFill.color = Color.Lerp(ColorPalette.Get(color.NextColor), Color.white, .3f);
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                powerSeconds[i] = PowerUpManager.Instance != null ? PowerUpManager.Instance.Remaining((PowerUpType)i) : 0;
+                bool activePower = powerSeconds[i] > 0;
+                powerCards[i].SetActive(activePower);
+                if (activePower) powerLabels[i].text = UiLabels.PowerName((PowerUpType)i) + " " + Mathf.CeilToInt(powerSeconds[i]) + " sn";
             }
         }
-
-        void OnScoreChanged(int score)
-        {
-            scoreText.text = score.ToString();
-        }
-
-        void OnCoinsChanged(int total)
-        {
-            coinsText.text = total.ToString();
-            Juice.PunchScale(coinsText.transform, 0.2f, 0.15f);
-        }
-
-        void OnComboChanged(int combo)
-        {
-            if (combo >= 2)
-            {
-                comboText.text = $"COMBO x{ScoreManager.Instance.Multiplier}  ({combo})";
-                Juice.PunchScale(comboText.transform, 0.3f, 0.2f);
-            }
-            else
-            {
-                comboText.text = "";
-            }
-        }
-
-        void OnStackChanged(int size)
-        {
-            stackText.text = "STACK " + size;
-            // Low stack = danger: turn the readout red and pop it.
-            stackText.color = size <= 2 ? ColorPalette.UiBad : ColorPalette.UiText;
-            Juice.PunchScale(stackText.transform, 0.25f, 0.18f);
-        }
-
-        void OnActiveColorChanged(GameColor color)
-        {
-            colorIndicator.color = ColorPalette.Get(color);
-            Juice.PunchScale(colorIndicator.transform, 0.5f, 0.35f);
-        }
-
-        static Color WithAlpha(Color c, float a) => new Color(c.r, c.g, c.b, a);
     }
 }

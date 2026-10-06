@@ -1,0 +1,6 @@
+{
+  "name": "ColorStackRush.JevEditor",
+  "references": ["ColorStackRush.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

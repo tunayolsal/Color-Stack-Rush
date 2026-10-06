@@ -1,83 +1,49 @@
-using System.Collections;
 using UnityEngine;
-
 namespace ColorStackRush
 {
-    /// <summary>
-    /// Owns the "active color" the player must collect. Rotates to a new
-    /// random color every 15-20 seconds while playing.
-    /// </summary>
     public class ColorManager : MonoBehaviour
     {
         public static ColorManager Instance { get; private set; }
-
-        [Header("Color cycling")]
-        [SerializeField] float minInterval = 15f;
-        [SerializeField] float maxInterval = 20f;
-
         public GameColor ActiveColor { get; private set; } = GameColor.Pink;
-
-        Coroutine cycleRoutine;
-
+        public GameColor NextColor { get; private set; }
+        public bool HasWarning { get; private set; }
+        public float WarningSeconds { get; private set; }
         void Awake() => Instance = this;
-
-        void OnEnable()
+        void OnEnable() => GameEvents.RunStarted += ResetColor;
+        void OnDisable() { GameEvents.RunStarted -= ResetColor; if (Instance == this) Instance = null; }
+        void ResetColor()
         {
-            GameEvents.RunStarted += OnRunStarted;
-            GameEvents.StateChanged += OnStateChanged;
+            HasWarning = false;
+            WarningSeconds = 0;
+            ActiveColor = TrackPlanner.ColorAtDistance(GameManager.Instance.CurrentRun, 0);
+            GameEvents.RaiseActiveColorChanged(ActiveColor);
+            GameEvents.RaiseColorChangeWarning(ActiveColor, 0);
         }
-
-        void OnDisable()
+        void Update()
         {
-            GameEvents.RunStarted -= OnRunStarted;
-            GameEvents.StateChanged -= OnStateChanged;
-        }
-
-        void OnRunStarted()
-        {
-            // Fresh random color each run, announced so UI/player ring update.
-            SetActiveColor((GameColor)Random.Range(0, 4));
-        }
-
-        void OnStateChanged(GameState state)
-        {
-            if (state == GameState.Playing)
+            if (GameManager.Instance.State != GameState.Playing) return;
+            var config = GameManager.Instance.CurrentRun;
+            var player = PlayerController.Instance;
+            float z = player.Distance;
+            GameColor color = TrackPlanner.ColorAtDistance(config, z);
+            if (color != ActiveColor)
             {
-                if (cycleRoutine == null) cycleRoutine = StartCoroutine(CycleRoutine());
-            }
-            else if (state != GameState.Paused) // pausing shouldn't kill the cycle
-            {
-                if (cycleRoutine != null)
-                {
-                    StopCoroutine(cycleRoutine);
-                    cycleRoutine = null;
-                }
-            }
-        }
-
-        /// <summary>Waits 15-20 s, then switches to a different random color, forever while playing.</summary>
-        IEnumerator CycleRoutine()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(Random.Range(minInterval, maxInterval));
-
-                if (GameManager.Instance.State != GameState.Playing) continue;
-
-                // Always pick a *different* color so the change is meaningful.
-                GameColor next;
-                do { next = (GameColor)Random.Range(0, 4); }
-                while (next == ActiveColor);
-
-                SetActiveColor(next);
+                ActiveColor = color;
+                HasWarning = false;
+                GameEvents.RaiseActiveColorChanged(color);
+                GameEvents.RaiseColorChangeWarning(color, 0);
                 HapticsManager.Light();
             }
-        }
-
-        void SetActiveColor(GameColor color)
-        {
-            ActiveColor = color;
-            GameEvents.RaiseActiveColorChanged(color);
+            if (!config.ChangesColor) return;
+            float boundary = (Mathf.FloorToInt(z / TrackPlanner.ColorBand) + 1) * TrackPlanner.ColorBand;
+            if (boundary >= config.Length || boundary - z > TrackPlanner.WarningDistance) return;
+            WarningSeconds = (boundary - z) / Mathf.Max(.1f, player.CurrentSpeed * Time.timeScale);
+            if (!HasWarning)
+            {
+                NextColor = TrackPlanner.ColorAtDistance(config, boundary + 1);
+                HasWarning = true;
+                GameEvents.RaiseColorChangeWarning(NextColor, WarningSeconds);
+            }
         }
     }
 }

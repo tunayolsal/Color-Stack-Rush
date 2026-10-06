@@ -16,6 +16,13 @@ namespace ColorStackRush
         public static event Action PlayerDied;             // Stack hit zero
         public static event Action FinishReached;          // Player crossed the finish line
 
+        public static event Action<RunConfig> RunConfigured;
+        public static event Action<RunResult> RunCompleted;
+        public static event Action<GameColor, float> ColorChangeWarning;
+        public static void RaiseRunConfigured(RunConfig config) => RunConfigured?.Invoke(config);
+        public static void RaiseRunCompleted(RunResult result) => RunCompleted?.Invoke(result);
+        public static void RaiseColorChangeWarning(GameColor color, float seconds) => ColorChangeWarning?.Invoke(color, seconds);
+
         // --- Color / stack ---
         public static event Action<GameColor> ActiveColorChanged;
         public static event Action<int> StackChanged;                 // new stack size

@@ -13,7 +13,7 @@ namespace ColorStackRush
         [Header("Stack")]
         [SerializeField] int startBlocks = 4;
         [SerializeField] float blockSize = 0.55f;
-        [SerializeField] float spacing = 0.72f;
+        [SerializeField] float spacing = 0.38f;
 
         [Header("Follow feel")]
         [SerializeField] float followSpeed = 14f; // higher = tighter snake
@@ -27,6 +27,7 @@ namespace ColorStackRush
         void Awake()
         {
             container = new GameObject("StackBlocks").transform;
+            for (int i = 0; i < 36; i++) { var block = CreateBlock(); block.gameObject.SetActive(false); pool.Push(block); }
         }
 
         void OnEnable() => GameEvents.RunStarted += ResetStack;
@@ -47,8 +48,8 @@ namespace ColorStackRush
                 float lag = followSpeed / (1f + i * 0.12f);
                 Vector3 p = seg.position;
                 p.x = Mathf.Lerp(p.x, ahead.x, lag * dt);
-                p.y = Mathf.Lerp(p.y, ahead.y + blockSize * 0.5f, lag * dt);
-                p.z = ahead.z - spacing;
+                p.y = transform.position.y + blockSize * 0.5f; // fixed height; never accumulate height down the chain
+                p.z = ahead.z - Mathf.Min(spacing, 6.2f / Mathf.Max(1, Count));
                 seg.position = p;
                 ahead = p;
             }
@@ -57,6 +58,7 @@ namespace ColorStackRush
         /// <summary>Adds a block of the given color to the tail with a juicy pop.</summary>
         public void AddBlock(Color color)
         {
+            if (Count >= 32) return;
             Transform block = pool.Count > 0 ? pool.Pop() : CreateBlock();
             block.gameObject.SetActive(true);
             block.GetComponent<MeshRenderer>().sharedMaterial = MaterialCache.Get(color);
@@ -67,6 +69,7 @@ namespace ColorStackRush
                 : transform.position;
             block.position = tail + Vector3.back * spacing;
             block.localScale = Vector3.one * blockSize;
+            block.rotation = Quaternion.identity;
 
             segments.Add(block);
             Juice.PunchScale(block, 0.5f, 0.25f);
@@ -114,6 +117,17 @@ namespace ColorStackRush
         /// <summary>Clears the trail and grants the starting health blocks.</summary>
         void ResetStack()
         {
+            // Reclaim pending fly-off blocks before a rapid restart.
+            foreach (Transform child in container)
+            {
+                Juice.ForgetTransform(child);
+                child.gameObject.SetActive(false);
+                child.localScale = Vector3.one * blockSize;
+                child.rotation = Quaternion.identity;
+            }
+            segments.Clear();
+            pool.Clear();
+            foreach (Transform child in container) pool.Push(child);
             while (segments.Count > 0)
             {
                 Transform block = segments[segments.Count - 1];
@@ -121,14 +135,14 @@ namespace ColorStackRush
                 Recycle(block);
             }
 
+            var initialColor = ColorManager.Instance != null ? ColorManager.Instance.ActiveColor : GameColor.Pink;
             for (int i = 0; i < startBlocks; i++)
-                AddBlock(ColorPalette.Get((GameColor)Random.Range(0, 4)));
+                AddBlock(ColorPalette.Get(initialColor));
         }
 
         Transform CreateBlock()
         {
-            var go = Primitives.Create(PrimitiveType.Cube, container,
-                Vector3.zero, Vector3.one * blockSize, MaterialCache.Get(Color.white), "StackBlock");
+            var go = ToyMeshes.Block(container, "StackBlock", Vector3.zero, Vector3.one * blockSize, MaterialCache.Get(Color.white));
             return go.transform;
         }
 

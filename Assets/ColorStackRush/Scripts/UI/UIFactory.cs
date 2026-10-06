@@ -29,7 +29,10 @@ namespace ColorStackRush
         {
             get
             {
-                if (roundedSprite == null) roundedSprite = MakeRoundedSprite(64, 20);
+                if (roundedSprite == null) {
+                    var texture = Resources.Load<Texture2D>("Art/UI/panel");
+                    roundedSprite = texture != null ? Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f), 100, 0, SpriteMeshType.FullRect, new Vector4(16, 16, 16, 16)) : MakeRoundedSprite(64, 20);
+                }
                 return roundedSprite;
             }
         }
@@ -102,8 +105,8 @@ namespace ColorStackRush
             t.fontStyle = style;
             t.color = color;
             t.alignment = align;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
+            t.horizontalOverflow = HorizontalWrapMode.Wrap;
+            t.verticalOverflow = VerticalWrapMode.Truncate;
             t.raycastTarget = false;
             return t;
         }
@@ -116,10 +119,12 @@ namespace ColorStackRush
             var img = CreateImage(parent, name, color, pos, size, anchor);
             img.raycastTarget = true;
 
+            var shadow = img.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(.1f, .18f, .28f, .16f); shadow.effectDistance = new Vector2(0, -7);
             var btn = img.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
 
-            CreateText(img.transform, "Label", label, fontSize, textColor ?? Color.white, Vector2.zero, size);
+            CreateText(img.transform, "Label", label, fontSize, textColor ?? (color.g > .7f && color.r > .65f ? ColorPalette.UiText : Color.white), Vector2.zero, size);
 
             btn.onClick.AddListener(() =>
             {

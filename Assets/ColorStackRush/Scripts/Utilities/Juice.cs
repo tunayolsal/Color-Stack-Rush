@@ -15,6 +15,7 @@ namespace ColorStackRush
         // Hidden runner that hosts the coroutines.
         class Runner : MonoBehaviour { }
         static Runner runner;
+        static readonly Dictionary<Transform, Coroutine> moves = new Dictionary<Transform, Coroutine>();
 
         static Runner R
         {
@@ -67,7 +68,8 @@ namespace ColorStackRush
         /// <summary>Smoothly moves a transform to a world position, then invokes a callback.</summary>
         public static void MoveTo(Transform t, Vector3 target, float duration, Action onDone = null)
         {
-            R.StartCoroutine(MoveRoutine(t, target, duration, onDone));
+            if (moves.TryGetValue(t, out var old) && old != null) R.StopCoroutine(old);
+            moves[t] = R.StartCoroutine(MoveRoutine(t, target, duration, onDone));
         }
 
         static IEnumerator MoveRoutine(Transform t, Vector3 target, float duration, Action onDone)
@@ -92,7 +94,8 @@ namespace ColorStackRush
         /// </summary>
         public static void FlyOff(Transform t, Vector3 direction, Action onDone = null)
         {
-            R.StartCoroutine(FlyOffRoutine(t, direction, onDone));
+            ForgetTransform(t);
+            moves[t] = R.StartCoroutine(FlyOffRoutine(t, direction, onDone));
         }
 
         static IEnumerator FlyOffRoutine(Transform t, Vector3 dir, Action onDone)
@@ -122,6 +125,9 @@ namespace ColorStackRush
         /// <summary>Clears cached base scales (call when objects are destroyed in bulk).</summary>
         public static void ForgetTransform(Transform t)
         {
+            if (activePunches.TryGetValue(t, out var animation) && animation != null && runner != null) runner.StopCoroutine(animation);
+            if (moves.TryGetValue(t, out var move) && move != null && runner != null) runner.StopCoroutine(move);
+            moves.Remove(t);
             baseScales.Remove(t);
             activePunches.Remove(t);
         }

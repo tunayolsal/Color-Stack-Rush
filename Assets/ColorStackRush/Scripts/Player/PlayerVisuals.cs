@@ -15,14 +15,16 @@ namespace ColorStackRush
         GameObject shieldOrb;
         Transform ballTransform;
         Coroutine blinkRoutine;
+        Vector3 ballRestScale, ringRestScale;
+        Quaternion ballRestRotation;
 
         void Awake()
         {
             ballTransform = transform.Find("Ball");
-            if (ballTransform != null) ballRenderer = ballTransform.GetComponent<MeshRenderer>();
+            if (ballTransform != null) { ballRenderer = ballTransform.GetComponent<MeshRenderer>(); ballRestScale = ballTransform.localScale; ballRestRotation = ballTransform.localRotation; }
 
             var ring = transform.Find("ColorRing");
-            if (ring != null) ringRenderer = ring.GetComponent<MeshRenderer>();
+            if (ring != null) { ringRenderer = ring.GetComponent<MeshRenderer>(); ringRestScale = ring.localScale; }
 
             var orb = transform.Find("ShieldOrb");
             if (orb != null)
@@ -34,10 +36,18 @@ namespace ColorStackRush
             }
         }
 
+        void ResetVisuals()
+        {
+            if (blinkRoutine != null) StopCoroutine(blinkRoutine);
+            if (ballRenderer != null) ballRenderer.enabled = true;
+            if (ballTransform != null) { Juice.ForgetTransform(ballTransform); ballTransform.localScale = ballRestScale; ballTransform.localRotation = ballRestRotation; }
+            if (ringRenderer != null) { Juice.ForgetTransform(ringRenderer.transform); ringRenderer.transform.localScale = ringRestScale; }
+        }
         void Start() => ApplySkin(SaveManager.Data.selectedSkin);
 
         void OnEnable()
         {
+            GameEvents.RunStarted += ResetVisuals;
             GameEvents.SkinSelected += ApplySkin;
             GameEvents.ActiveColorChanged += OnActiveColorChanged;
             GameEvents.ObstacleHit += OnObstacleHit;
@@ -48,6 +58,7 @@ namespace ColorStackRush
 
         void OnDisable()
         {
+            GameEvents.RunStarted -= ResetVisuals;
             GameEvents.SkinSelected -= ApplySkin;
             GameEvents.ActiveColorChanged -= OnActiveColorChanged;
             GameEvents.ObstacleHit -= OnObstacleHit;
@@ -61,15 +72,18 @@ namespace ColorStackRush
         {
             if (ballRenderer == null) return;
             var skin = ShopManager.GetSkin(skinIndex);
-            ballRenderer.sharedMaterial = MaterialCache.GetEmissive(skin.primary, 0.15f);
+            var rim = transform.Find("CosmeticRim");
+            if (rim != null) rim.GetComponent<MeshRenderer>().sharedMaterial = MaterialCache.Get(Color.Lerp(Color.white, skin.primary, .25f));
+            if (ColorManager.Instance != null) ballRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(ColorManager.Instance.ActiveColor));
         }
 
         /// <summary>The ring under the ball always shows which color to collect.</summary>
         void OnActiveColorChanged(GameColor color)
         {
             if (ringRenderer == null) return;
-            ringRenderer.sharedMaterial = MaterialCache.GetEmissive(ColorPalette.Get(color), 0.8f);
-            Juice.PunchScale(ringRenderer.transform, 0.6f, 0.35f);
+            ringRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(color));
+            if (ballRenderer != null) ballRenderer.sharedMaterial = MaterialCache.Get(ColorPalette.Get(color));
+            Juice.PunchScale(ringRenderer.transform, .18f, .25f);
         }
 
         void OnBlockCollected(bool correct, Vector3 pos)

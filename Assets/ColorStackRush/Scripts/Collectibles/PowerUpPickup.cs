@@ -38,8 +38,8 @@ namespace ColorStackRush
             {
                 case PowerUpType.Magnet:      return "M";
                 case PowerUpType.DoubleCoins: return "2X";
-                case PowerUpType.Shield:      return "SH";
-                case PowerUpType.SlowMotion:  return "SL";
+                case PowerUpType.Shield:      return "K";
+                case PowerUpType.SlowMotion:  return "Y";
                 default:                      return "?"; // LuckyBox
             }
         }

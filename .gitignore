@@ -7,6 +7,10 @@
 [Ll]ogs/
 [Uu]serSettings/
 [Mm]emoryCaptures/
+/.utmp/
+/Assets/InitTestScene*.unity
+/Assets/InitTestScene*.unity.meta
+__pycache__/
 *.csproj
 *.unityproj
 *.sln

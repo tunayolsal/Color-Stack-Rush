@@ -15,6 +15,8 @@ namespace ColorStackRush
 
         protected Transform visual; // child that spins/bobs
         bool collected;
+        Vector3 restPosition, restScale;
+        Quaternion restRotation;
 
         /// <summary>Whether the magnet power-up should pull this item (blocks override this).</summary>
         protected virtual bool MagnetAttractable => true;
@@ -22,9 +24,16 @@ namespace ColorStackRush
         protected virtual void Awake()
         {
             visual = transform.Find("Visual");
+            if (visual != null) { restPosition = visual.localPosition; restScale = visual.localScale; restRotation = visual.localRotation; }
         }
 
-        void OnEnable() => collected = false;
+        void OnEnable()
+        {
+            collected = false;
+            if (visual == null) return;
+            Juice.ForgetTransform(visual);
+            visual.localPosition = restPosition; visual.localScale = restScale; visual.localRotation = restRotation;
+        }
 
         protected virtual void Update()
         {

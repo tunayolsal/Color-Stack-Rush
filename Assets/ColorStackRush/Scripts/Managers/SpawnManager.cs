@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ColorStackRush
 {
     /// <summary>
-    /// Endless world generator. Builds every template (blocks, coins,
+    /// Finite course streamer. Builds every template (blocks, coins,
     /// obstacles, ground, power-ups) from primitives at startup, then streams
     /// pooled "chunks" of content ahead of the player and recycles everything
     /// that falls behind. Also spawns the finish gate + multiplier stairs.
@@ -18,39 +18,35 @@ namespace ColorStackRush
         [SerializeField] float groundTileLength = 30f;
 
         [Header("Streaming")]
-        [SerializeField] float chunkLength = 11f;
         [SerializeField] float spawnAheadDistance = 80f;
         [SerializeField] float despawnBehindDistance = 18f;
-        [SerializeField] float firstChunkZ = 18f; // clear runway at the start
 
-        [Header("Level length")]
-        [SerializeField] float baseLevelLength = 220f;
-        [SerializeField] float lengthPerLevel = 40f;
-        [SerializeField] float maxLevelLength = 600f;
 
         [Header("Finish stairs")]
         [SerializeField] int stairCount = 18;
         [SerializeField] float stairHeight = 0.45f;
         [SerializeField] float stairDepth = 1.6f;
 
-        [Header("Spawn chances")]
-        [Range(0f, 1f)] [SerializeField] float powerUpChance = 0.08f;
-        [Range(0f, 1f)] [SerializeField] float activeColorBias = 0.6f; // % of block runs matching active color
 
         // Pools
-        ObjectPool blockPool, coinPool, wallPool, spinnerPool, sliderPool, powerUpPool, groundPool;
+        ObjectPool blockPool, coinPool, wallPool, spinnerPool, sliderPool, powerUpPool, groundPool, routeGatePool;
 
         readonly List<PooledObject> activeItems = new List<PooledObject>(128);
         readonly List<PooledObject> activeGround = new List<PooledObject>(8);
 
         /// <summary>Top-surface world positions of each finish stair (player path).</summary>
         public List<Vector3> FinishSteps { get; } = new List<Vector3>(24);
+        public CoursePlan CurrentCourse { get; private set; }
+        readonly List<GameObject> finishLabels = new List<GameObject>(18);
 
         Transform templateRoot;
         GameObject finishRoot;
         float spawnZ;
         float groundFrontZ;
         float levelLength;
+        int segmentIndex;
+        RunConfig config;
+        readonly TrackSegment segment = new TrackSegment();
         bool finishSpawned;
 
         float LaneHalf => roadWidth * 0.5f - 0.9f; // safe spawn band inside the rails
@@ -66,8 +62,21 @@ namespace ColorStackRush
             EnsureGround(60f); // menu backdrop
         }
 
-        void OnEnable() => GameEvents.RunStarted += ResetWorld;
-        void OnDisable() => GameEvents.RunStarted -= ResetWorld;
+        void OnEnable()
+        {
+            GameEvents.RunStarted += ResetWorld;
+            GameEvents.StateChanged += OnStateChanged;
+        }
+        void OnDisable()
+        {
+            GameEvents.RunStarted -= ResetWorld;
+            GameEvents.StateChanged -= OnStateChanged;
+        }
+        void OnStateChanged(GameState state)
+        {
+            if (state != GameState.Victory && state != GameState.GameOver) return;
+            foreach (var label in finishLabels) if (label != null) label.SetActive(false);
+        }
 
         void Update()
         {
@@ -83,9 +92,10 @@ namespace ColorStackRush
                 while (!finishSpawned && spawnZ < playerZ + spawnAheadDistance)
                 {
                     // Stop a full chunk early so nothing overlaps the finish gate.
-                    if (spawnZ + chunkLength >= levelLength) { SpawnFinish(); break; }
+                    if (spawnZ + TrackSegment.Length >= levelLength) { SpawnFinish(); break; }
                     SpawnChunk();
-                    spawnZ += chunkLength;
+                    spawnZ += TrackSegment.Length;
+                    segmentIndex++;
                 }
             }
 
@@ -107,6 +117,7 @@ namespace ColorStackRush
 
             if (finishRoot != null) Destroy(finishRoot);
             FinishSteps.Clear();
+            finishLabels.Clear();
 
             ResetStreamingState();
             CurrencyManager.ResetRunCoins();
@@ -115,11 +126,13 @@ namespace ColorStackRush
 
         void ResetStreamingState()
         {
-            spawnZ = firstChunkZ;
+            config = GameManager.Instance != null ? GameManager.Instance.CurrentRun : RunConfig.Level(1);
+            CurrentCourse = TrackPlanner.CreateCourse(config);
+            segmentIndex = 0;
+            spawnZ = TrackPlanner.FirstZ;
             groundFrontZ = -groundTileLength;
             finishSpawned = false;
-            levelLength = Mathf.Min(maxLevelLength,
-                baseLevelLength + (SaveManager.Data.level - 1) * lengthPerLevel);
+            levelLength = config.Length;
         }
 
         // ------------------------------------------------------------------
@@ -131,6 +144,7 @@ namespace ColorStackRush
             while (groundFrontZ < untilZ)
             {
                 var tile = groundPool.Get(new Vector3(0f, 0f, groundFrontZ + groundTileLength * 0.5f), Quaternion.identity);
+                ThemePresentation.TintGround(tile, config.Theme);
                 activeGround.Add(tile.GetComponent<PooledObject>());
                 groundFrontZ += groundTileLength;
             }
@@ -149,7 +163,6 @@ namespace ColorStackRush
                 else if (item.transform.position.z < playerZ - despawnBehindDistance)
                 {
                     item.Release();
-                    activeItems.RemoveAt(i);
                 }
             }
 
@@ -158,7 +171,6 @@ namespace ColorStackRush
                 if (activeGround[i].transform.position.z < playerZ - groundTileLength * 1.5f)
                 {
                     activeGround[i].Release();
-                    activeGround.RemoveAt(i);
                 }
             }
         }
@@ -170,108 +182,32 @@ namespace ColorStackRush
         /// <summary>Spawns one randomized gameplay pattern into [spawnZ, spawnZ + chunkLength].</summary>
         void SpawnChunk()
         {
-            int roll = Random.Range(0, 100);
-
-            if (roll < 30) SpawnBlockRun();
-            else if (roll < 52) SpawnWallWithGap();
-            else if (roll < 66) SpawnCoinRun();
-            else if (roll < 81) SpawnSpinnerPattern();
-            else SpawnSliderPattern();
-
-            if (Random.value < powerUpChance) SpawnPowerUp();
-        }
-
-        GameColor PickBlockColor()
-        {
-            if (ColorManager.Instance != null && Random.value < activeColorBias)
-                return ColorManager.Instance.ActiveColor;
-            return (GameColor)Random.Range(0, 4);
-        }
-
-        /// <summary>A run of 4 blocks, straight or drifting diagonally across the road.</summary>
-        void SpawnBlockRun()
-        {
-            GameColor color = PickBlockColor();
-            float startX = Random.Range(-LaneHalf, LaneHalf);
-            float endX = Random.value < 0.5f ? startX : Random.Range(-LaneHalf, LaneHalf);
-
-            for (int i = 0; i < 4; i++)
+            CurrentCourse.CopySegment(segmentIndex, segment);
+            for (int i = 0; i < segment.count; i++)
             {
-                float t = i / 3f;
-                SpawnBlock(new Vector3(Mathf.Lerp(startX, endX, t), 0f, spawnZ + 1.5f + i * 2.4f), color);
+                var item = segment.items[i];
+                var pos = new Vector3(item.x, 0, segment.startZ + item.z);
+                GameObject go = null;
+                switch (item.kind)
+                {
+                    case TrackKind.Block: SpawnBlock(pos, item.color); break;
+                    case TrackKind.Coin: go = coinPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.Wall: go = wallPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.RouteGate:
+                        go = routeGatePool.Get(new Vector3(0, 0, pos.z), Quaternion.identity);
+                        go.GetComponent<RouteGate>().Setup(item.x, item.gapWidth, roadWidth);
+                        break;
+                    case TrackKind.Spinner: go = spinnerPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.Slider: go = sliderPool.Get(pos, Quaternion.identity); break;
+                    case TrackKind.PowerUp: go = powerUpPool.Get(pos, Quaternion.identity); go.GetComponent<PowerUpPickup>().Setup(item.power); break;
+                }
+                if (go != null)
+                {
+                    var obstacle = go.GetComponent<Obstacle>();
+                    if (obstacle != null) obstacle.SetupMotion(item.phase);
+                    Track(go);
+                }
             }
-        }
-
-        /// <summary>A wall across the road with one safe gap; a bonus block sits in the gap.</summary>
-        void SpawnWallWithGap()
-        {
-            float z = spawnZ + chunkLength * 0.5f;
-            float gapCenter = Random.Range(-LaneHalf + 0.6f, LaneHalf - 0.6f);
-            const float gapHalfWidth = 1.35f;
-            const float pieceWidth = 1.2f;
-
-            for (float x = -roadWidth * 0.5f + pieceWidth * 0.5f; x < roadWidth * 0.5f; x += pieceWidth)
-            {
-                if (Mathf.Abs(x - gapCenter) < gapHalfWidth) continue; // leave the gap open
-                var wall = wallPool.Get(new Vector3(x, 0f, z), Quaternion.identity);
-                Track(wall);
-            }
-
-            // Reward for threading the needle.
-            SpawnBlock(new Vector3(gapCenter, 0f, z + 2.5f), PickBlockColor());
-        }
-
-        /// <summary>A line of 5 coins, straight or gently sine-weaving.</summary>
-        void SpawnCoinRun()
-        {
-            float x = Random.Range(-LaneHalf, LaneHalf);
-            bool weave = Random.value < 0.4f;
-
-            for (int i = 0; i < 5; i++)
-            {
-                float cx = weave ? Mathf.Sin(i * 0.9f) * LaneHalf * 0.7f : x;
-                var coin = coinPool.Get(new Vector3(cx, 0f, spawnZ + 1f + i * 1.8f), Quaternion.identity);
-                Track(coin);
-            }
-        }
-
-        /// <summary>A rotating bar in the middle with tempting blocks on the edges.</summary>
-        void SpawnSpinnerPattern()
-        {
-            float z = spawnZ + chunkLength * 0.5f;
-            var spinner = spinnerPool.Get(new Vector3(Random.Range(-1f, 1f), 0f, z), Quaternion.identity);
-            Track(spinner);
-
-            GameColor color = PickBlockColor();
-            SpawnBlock(new Vector3(-LaneHalf, 0f, z + 3.5f), color);
-            SpawnBlock(new Vector3(LaneHalf, 0f, z + 3.5f), color);
-        }
-
-        /// <summary>A cube sliding across the road, followed by a short coin trail.</summary>
-        void SpawnSliderPattern()
-        {
-            float z = spawnZ + 3f;
-            var slider = sliderPool.Get(new Vector3(0f, 0f, z), Quaternion.identity);
-            Track(slider);
-
-            for (int i = 0; i < 3; i++)
-            {
-                var coin = coinPool.Get(new Vector3(0f, 0f, z + 3f + i * 1.6f), Quaternion.identity);
-                Track(coin);
-            }
-        }
-
-        void SpawnPowerUp()
-        {
-            // LuckyBox is rare; the four timed power-ups share the rest evenly.
-            PowerUpType type = Random.value < 0.12f
-                ? PowerUpType.LuckyBox
-                : (PowerUpType)Random.Range(0, 4);
-
-            var pos = new Vector3(Random.Range(-LaneHalf, LaneHalf), 0f, spawnZ + Random.Range(2f, chunkLength - 1f));
-            var pickup = powerUpPool.Get(pos, Quaternion.identity);
-            pickup.GetComponent<PowerUpPickup>().Setup(type);
-            Track(pickup);
         }
 
         void SpawnBlock(Vector3 pos, GameColor color)
@@ -281,7 +217,12 @@ namespace ColorStackRush
             Track(block);
         }
 
-        void Track(GameObject go) => activeItems.Add(go.GetComponent<PooledObject>());
+        void Track(GameObject go)
+        {
+            var item = go.GetComponent<PooledObject>();
+            if (!activeItems.Contains(item)) activeItems.Add(item);
+        }
+        void Untrack(PooledObject item) { activeItems.Remove(item); activeGround.Remove(item); }
 
         // ------------------------------------------------------------------
         //  Finish gate + multiplier stairs
@@ -321,7 +262,7 @@ namespace ColorStackRush
 
                 Color stepColor = Color.Lerp(
                     ColorPalette.Get((GameColor)(i % 4)),
-                    Color.white, 0.35f);
+                    Color.white, 0.08f);
 
                 Primitives.Create(PrimitiveType.Cube, finishRoot.transform,
                     new Vector3(0f, top * 0.5f, stepZ),
@@ -330,8 +271,9 @@ namespace ColorStackRush
 
                 // Multiplier label floating above the step.
                 var label = WorldText.Create(finishRoot.transform,
-                    $"x{i + 1}", new Vector3(2.6f, top + 0.55f, stepZ), ColorPalette.UiText, 0.9f);
+                    $"+{StepValue(i)}", new Vector3(2.6f, top + 0.55f, stepZ), ColorPalette.UiText, 0.9f);
                 label.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
+                finishLabels.Add(label.gameObject);
 
                 // Where the player's root should land when climbing this step.
                 FinishSteps.Add(new Vector3(0f, top, stepZ));
@@ -347,13 +289,17 @@ namespace ColorStackRush
             templateRoot = new GameObject("Templates").transform;
             templateRoot.SetParent(transform, false);
 
-            blockPool   = new ObjectPool(BuildBlockTemplate(), transform, 24);
-            coinPool    = new ObjectPool(BuildCoinTemplate(), transform, 16);
+            blockPool   = new ObjectPool(BuildBlockTemplate(), transform, 48);
+            coinPool    = new ObjectPool(BuildCoinTemplate(), transform, 40);
             wallPool    = new ObjectPool(BuildWallTemplate(), transform, 24);
+            routeGatePool = new ObjectPool(BuildRouteGateTemplate(), transform, 6);
             spinnerPool = new ObjectPool(BuildSpinnerTemplate(), transform, 4);
             sliderPool  = new ObjectPool(BuildSliderTemplate(), transform, 4);
             powerUpPool = new ObjectPool(BuildPowerUpTemplate(), transform, 3);
             groundPool  = new ObjectPool(BuildGroundTemplate(), transform, 8);
+            blockPool.Released += Untrack; coinPool.Released += Untrack; wallPool.Released += Untrack;
+            routeGatePool.Released += Untrack;
+            spinnerPool.Released += Untrack; sliderPool.Released += Untrack; powerUpPool.Released += Untrack; groundPool.Released += Untrack;
         }
 
         GameObject NewTemplate(string name)
@@ -366,9 +312,7 @@ namespace ColorStackRush
         GameObject BuildBlockTemplate()
         {
             var root = NewTemplate("Block");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.5f, 0f), Vector3.one * 0.8f,
-                MaterialCache.Get(ColorPalette.Get(GameColor.Pink)), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .5f, 0f), Vector3.one * .8f, MaterialCache.Get(ColorPalette.Get(GameColor.Pink)));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -400,9 +344,8 @@ namespace ColorStackRush
         GameObject BuildWallTemplate()
         {
             var root = NewTemplate("Wall");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.6f, 0f), new Vector3(1.18f, 1.2f, 0.9f),
-                MaterialCache.Get(ColorPalette.Obstacle), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .6f, 0f), new Vector3(1.18f, 1.2f, .9f), MaterialCache.Get(ColorPalette.Obstacle));
+            ToyMeshes.Block(root.transform, "Bumper", new Vector3(0f, .72f, -.48f), new Vector3(1.08f, .28f, .12f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -410,6 +353,23 @@ namespace ColorStackRush
             col.size = new Vector3(1.1f, 1.2f, 0.85f);
 
             root.AddComponent<Obstacle>().SetKind(ObstacleKind.Wall);
+            return root;
+        }
+
+        GameObject BuildRouteGateTemplate()
+        {
+            var root = NewTemplate("RouteGate");
+            var mat = MaterialCache.Get(ColorPalette.Obstacle);
+            var bumper = MaterialCache.Get(ColorPalette.UiBad);
+            foreach (string side in new[] { "Left", "Right" })
+            {
+                var wall = Primitives.Create(PrimitiveType.Cube, root.transform, Vector3.zero, Vector3.one, mat, side);
+                var col = wall.AddComponent<BoxCollider>();
+                col.isTrigger = true;
+                Primitives.Create(PrimitiveType.Cube, root.transform, Vector3.zero, Vector3.one, bumper, side + "Bumper");
+            }
+            root.AddComponent<Obstacle>().SetKind(ObstacleKind.Wall);
+            root.AddComponent<RouteGate>().Setup(TrackPlanner.GateCentre, TrackPlanner.GateGapWidth, roadWidth);
             return root;
         }
 
@@ -426,12 +386,11 @@ namespace ColorStackRush
             var bar = new GameObject("Moving");
             bar.transform.SetParent(root.transform, false);
             bar.transform.localPosition = new Vector3(0f, 0.55f, 0f);
-            Primitives.Create(PrimitiveType.Cube, bar.transform,
-                Vector3.zero, new Vector3(4.4f, 0.45f, 0.45f), mat, "Bar");
+            ToyMeshes.Block(bar.transform, "Bar", Vector3.zero, new Vector3(1.4f, .45f, .45f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = bar.AddComponent<BoxCollider>();
             col.isTrigger = true;
-            col.size = new Vector3(4.4f, 0.45f, 0.45f);
+            col.size = new Vector3(1.4f, 0.45f, 0.45f);
 
             root.AddComponent<Obstacle>().SetKind(ObstacleKind.Spinner);
             return root;
@@ -440,9 +399,8 @@ namespace ColorStackRush
         GameObject BuildSliderTemplate()
         {
             var root = NewTemplate("Slider");
-            Primitives.Create(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0.75f, 0f), Vector3.one * 1.5f,
-                MaterialCache.Get(ColorPalette.Obstacle), "Visual");
+            ToyMeshes.Block(root.transform, "Visual", new Vector3(0f, .75f, 0f), Vector3.one * 1.5f, MaterialCache.Get(ColorPalette.Obstacle));
+            ToyMeshes.Block(root.transform, "Bumper", new Vector3(0f, .75f, -.77f), new Vector3(1.3f, .35f, .1f), MaterialCache.Get(ColorPalette.UiBad));
 
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true;
@@ -489,6 +447,12 @@ namespace ColorStackRush
             Primitives.Create(PrimitiveType.Cube, root.transform,
                 new Vector3(roadWidth * 0.5f + 0.55f, -0.05f, 0f), new Vector3(0.5f, 0.7f, groundTileLength), railMat, "RailR");
 
+            Primitives.Create(PrimitiveType.Cube, root.transform, new Vector3(-7.2f, -.6f, 0), new Vector3(6.8f, .7f, groundTileLength), MaterialCache.Get(new Color(.60f, .78f, .68f)), "ShoulderL");
+            Primitives.Create(PrimitiveType.Cube, root.transform, new Vector3(7.2f, -.6f, 0), new Vector3(6.8f, .7f, groundTileLength), MaterialCache.Get(new Color(.60f, .78f, .68f)), "ShoulderR");
+            for (int i = 0; i < 3; i++)
+                ToyMeshes.Block(root.transform, "LaneJoint" + i, new Vector3(0, .012f, (i - 1) * 10), new Vector3(roadWidth, .02f, .07f), MaterialCache.Get(new Color(.5f, .65f, .73f)));
+            PrefabArt.DecorateTile(root.transform, groundTileLength);
+            root.AddComponent<GroundPresentationCache>().Warmup();
             return root;
         }
     }

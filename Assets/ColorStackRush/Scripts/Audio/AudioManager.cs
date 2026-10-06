@@ -4,8 +4,8 @@ using UnityEngine;
 namespace ColorStackRush
 {
     /// <summary>
-    /// Central audio hub. Owns one music source and one SFX source, generates
-    /// all clips procedurally, applies saved volume/mute settings, and reacts
+    /// Central audio hub. Loads the bundled CC0 music and effects, applies
+    /// saved volume/mute settings, and reacts
     /// to gameplay events so other systems never talk to audio directly.
     /// </summary>
     public class AudioManager : MonoBehaviour
@@ -13,12 +13,14 @@ namespace ColorStackRush
         public static AudioManager Instance { get; private set; }
 
         [Header("Mix levels")]
-        [SerializeField] float musicBaseLevel = 0.5f;
-        [SerializeField] float sfxBaseLevel = 0.9f;
+        [SerializeField] float musicBaseLevel = 0.25f;
+        [SerializeField] float sfxBaseLevel = 0.75f;
 
         AudioSource musicSource;
         AudioSource sfxSource;
         readonly Dictionary<SfxId, AudioClip> clips = new Dictionary<SfxId, AudioClip>();
+        bool audioUnlocked;
+        bool runHasStarted;
 
         void Awake()
         {
@@ -31,13 +33,13 @@ namespace ColorStackRush
             sfxSource = gameObject.AddComponent<AudioSource>();
             sfxSource.playOnAwake = false;
 
-            // Pre-generate every sound effect once.
+            // Load once at startup; synthesis only keeps an incomplete asset
+            // checkout playable, never the normal shipping audio path.
             foreach (SfxId id in System.Enum.GetValues(typeof(SfxId)))
-                clips[id] = SfxSynth.Generate(id);
+                clips[id] = BundledAudio.LoadEffect(id) ?? SfxSynth.Generate(id);
 
-            musicSource.clip = SfxSynth.GenerateMusicLoop();
+            musicSource.clip = BundledAudio.LoadMusic() ?? SfxSynth.GenerateMusicLoop();
             ApplySettings();
-            musicSource.Play();
         }
 
         void OnEnable()
@@ -48,6 +50,7 @@ namespace ColorStackRush
             GameEvents.PowerUpStarted += OnPowerUpStarted;
             GameEvents.ActiveColorChanged += OnColorChanged;
             GameEvents.StateChanged += OnStateChanged;
+            GameEvents.RunStarted += OnRunStarted;
         }
 
         void OnDisable()
@@ -58,6 +61,7 @@ namespace ColorStackRush
             GameEvents.PowerUpStarted -= OnPowerUpStarted;
             GameEvents.ActiveColorChanged -= OnColorChanged;
             GameEvents.StateChanged -= OnStateChanged;
+            GameEvents.RunStarted -= OnRunStarted;
         }
 
         // --- Event reactions ---
@@ -89,12 +93,27 @@ namespace ColorStackRush
 
         // --- Public API ---
 
+        void OnRunStarted()
+        {
+            runHasStarted = true;
+            UnlockAudio();
+        }
+
+        /// <summary>Called only after a play button/browser gesture; never autoplay at startup.</summary>
+        public void UnlockAudio()
+        {
+            audioUnlocked = true;
+            ApplySettings();
+            if (musicSource != null && runHasStarted && SaveManager.Data.musicOn && !musicSource.isPlaying) musicSource.Play();
+        }
+
         /// <summary>Plays a one-shot sound effect with optional pitch variation.</summary>
         public void PlaySfx(SfxId id, float pitch = 1f)
         {
-            if (!SaveManager.Data.sfxOn) return;
-            sfxSource.pitch = pitch;
-            sfxSource.PlayOneShot(clips[id]);
+            if (!audioUnlocked || !SaveManager.Data.sfxOn || sfxSource == null) return;
+            if (!clips.TryGetValue(id, out var clip) || clip == null) return;
+            sfxSource.pitch = Mathf.Clamp(pitch, .5f, 2.2f);
+            sfxSource.PlayOneShot(clip);
         }
 
         public void SetMusicVolume(float value)
@@ -131,6 +150,8 @@ namespace ColorStackRush
             var d = SaveManager.Data;
             musicSource.volume = d.musicOn ? d.musicVolume * musicBaseLevel : 0f;
             sfxSource.volume = d.sfxOn ? d.sfxVolume * sfxBaseLevel : 0f;
+            if (audioUnlocked && runHasStarted && d.musicOn && !musicSource.isPlaying) musicSource.Play();
+            if (!d.musicOn && musicSource.isPlaying) musicSource.Stop();
         }
     }
 }

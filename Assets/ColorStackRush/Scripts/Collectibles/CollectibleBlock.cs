@@ -43,7 +43,7 @@ namespace ColorStackRush
             }
             else
             {
-                player.Stack.RemoveBlocks(1);
+                player.Stack.RemoveBlocks(GameManager.Instance.CurrentRun.Difficulty.WrongColorDamage);
                 ParticleFactory.Burst(transform.position + Vector3.up * 0.5f, ColorPalette.UiBad, 10);
                 HapticsManager.Medium();
             }

@@ -1,0 +1,8 @@
+{
+  "name": "ColorStackRush.Runtime",
+  "references": [
+    "Unity.InputSystem",
+    "UnityEngine.UI"
+  ],
+  "autoReferenced": true
+}

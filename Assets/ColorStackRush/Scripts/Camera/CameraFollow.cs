@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ColorStackRush
 {
     /// <summary>
-    /// Smooth chase camera rig. Follows the player's Z fully and X partially,
+    /// Smooth chase camera rig. Follows the player's Z with a fixed lateral view,
     /// with a vertical "bounce" punch on collects for extra juice.
     /// Lives on the rig root; the actual Camera sits on a child (CameraShake).
     /// </summary>
@@ -13,9 +13,8 @@ namespace ColorStackRush
         public static CameraFollow Instance { get; private set; }
 
         [Header("Framing")]
-        [SerializeField] Vector3 offset = new Vector3(0f, 7f, -9.5f);
-        [SerializeField] float pitchAngle = 32f;
-        [SerializeField] float xFollowFactor = 0.55f; // how much the camera tracks sideways
+        [SerializeField] Vector3 offset = new Vector3(0f, 10f, -10.5f);
+        [SerializeField] float pitchAngle = 38f;
 
         [Header("Smoothing")]
         [SerializeField] float smoothTime = 0.18f;
@@ -30,26 +29,56 @@ namespace ColorStackRush
             transform.rotation = Quaternion.Euler(pitchAngle, 0f, 0f);
         }
 
-        void OnEnable() => GameEvents.BlockCollected += OnBlockCollected;
-        void OnDisable() => GameEvents.BlockCollected -= OnBlockCollected;
+        void OnEnable()
+        {
+            GameEvents.BlockCollected += OnBlockCollected;
+            // The rig is built after the player, so this callback sees the
+            // already-reset Rigidbody/transform on RunStarted.
+            GameEvents.RunStarted += ResetForRun;
+        }
+        void OnDisable()
+        {
+            GameEvents.BlockCollected -= OnBlockCollected;
+            GameEvents.RunStarted -= ResetForRun;
+            StopAllCoroutines();
+        }
 
         public void SetTarget(Transform newTarget)
         {
             target = newTarget;
-            if (target != null)
-                transform.position = DesiredPosition();
+            ResetForRun();
+        }
+
+        /// <summary>Discard the previous stairs, follow momentum and feedback before a new run.</summary>
+        public void ResetForRun()
+        {
+            StopAllCoroutines();
+            bounceOffset = 0;
+            velocity = Vector3.zero;
+            transform.rotation = Quaternion.Euler(pitchAngle, 0, 0);
+            if (target != null) transform.position = DesiredPosition();
+            GetComponentInChildren<CameraShake>()?.ResetForRun();
         }
 
         void LateUpdate()
         {
             if (target == null) return;
-            transform.position = Vector3.SmoothDamp(transform.position, DesiredPosition(), ref velocity, smoothTime);
+            Vector3 desired = DesiredPosition();
+            Vector3 position = Vector3.SmoothDamp(transform.position, desired, ref velocity, smoothTime);
+            // Forward lag changes the player's screen position with speed.
+            // Keep the road centred. Delayed lateral tracking makes a stopped
+            // player appear to move backwards after a swipe.
+            position.x = desired.x;
+            velocity.x = 0;
+            position.z = desired.z;
+            velocity.z = 0;
+            transform.position = position;
         }
 
         Vector3 DesiredPosition()
         {
             return new Vector3(
-                target.position.x * xFollowFactor,
+                offset.x,
                 target.position.y + offset.y + bounceOffset,
                 target.position.z + offset.z);
         }
@@ -62,8 +91,9 @@ namespace ColorStackRush
         /// <summary>Quick vertical camera bounce (kick up, spring back).</summary>
         public void Punch(float strength)
         {
+            if (SaveManager.Data.reducedMotion) { bounceOffset = 0; return; }
             StopAllCoroutines();
-            StartCoroutine(PunchRoutine(strength));
+            StartCoroutine(PunchRoutine(Mathf.Min(strength, .18f)));
         }
 
         IEnumerator PunchRoutine(float strength)

@@ -15,6 +15,11 @@ namespace ColorStackRush
         public static readonly int[] Rewards = { 25, 50, 75, 100, 150, 200, 300 };
 
         const string DateFormat = "yyyy-MM-dd";
+        public static bool CanClaimOn(string last, DateTime today)
+        {
+            return string.IsNullOrEmpty(last) || (DateTime.TryParseExact(last, DateFormat, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var date) && today.Date > date.Date);
+        }
 
         void Awake() => Instance = this;
 
@@ -35,7 +40,7 @@ namespace ColorStackRush
             {
                 string last = SaveManager.Data.lastDailyClaim;
                 if (string.IsNullOrEmpty(last)) return true;
-                return last != DateTime.Now.ToString(DateFormat);
+                return CanClaimOn(last, DateTime.Now.Date);
             }
         }
 
@@ -56,18 +61,39 @@ namespace ColorStackRush
         /// <summary>Claims today's reward. Returns coins granted (0 if not claimable).</summary>
         public int Claim()
         {
-            if (!CanClaim) return 0;
+            int result = 0;
+            ClaimAsync(value => result = value);
+            return result;
+        }
+
+        /// <summary>Publishes the reward only after the complete transaction is durable.</summary>
+        public bool ClaimAsync(Action<int> completed)
+        {
+            if (!CanClaim || !SaveManager.TryBeginTransaction()) return false;
 
             int index = NextRewardIndex;
             int coins = Rewards[index];
 
             var data = SaveManager.Data;
+            int previousStreak = data.dailyStreak;
+            string previousClaim = data.lastDailyClaim;
             data.dailyStreak = StreakBroken ? 1 : data.dailyStreak + 1;
             data.lastDailyClaim = DateTime.Now.ToString(DateFormat);
-            CurrencyManager.Grant(coins); // also saves
-
-            AudioManager.Instance?.PlaySfx(SfxId.Buy);
-            return coins;
+            data.coins += coins;
+            SaveManager.SaveAsync(ok =>
+            {
+                if (!ok)
+                {
+                    data.coins -= coins;
+                    data.dailyStreak = previousStreak;
+                    data.lastDailyClaim = previousClaim;
+                }
+                SaveManager.EndTransaction();
+                GameEvents.RaiseCoinsChanged(data.coins);
+                if (ok) AudioManager.Instance?.PlaySfx(SfxId.Buy);
+                completed?.Invoke(ok ? coins : 0);
+            });
+            return true;
         }
     }
 }

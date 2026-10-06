@@ -28,8 +28,8 @@ namespace ColorStackRush
         public static Material Get(Color color)
         {
             if (lit.TryGetValue(color, out var m)) return m;
-            m = new Material(StandardShader) { color = color };
-            m.SetFloat("_Glossiness", 0.25f); // low smoothness = soft look
+            m = new Material(StandardShader) { color = color, enableInstancing = true };
+            m.SetFloat("_Glossiness", 0.48f); // low smoothness = soft look
             m.SetFloat("_Metallic", 0f);
             lit[color] = m;
             return m;
@@ -39,10 +39,10 @@ namespace ColorStackRush
         public static Material GetEmissive(Color color, float intensity = 0.55f)
         {
             if (emissive.TryGetValue(color, out var m)) return m;
-            m = new Material(StandardShader) { color = color };
+            m = new Material(StandardShader) { color = color, enableInstancing = true };
             m.SetFloat("_Glossiness", 0.4f);
             m.EnableKeyword("_EMISSION");
-            m.SetColor("_EmissionColor", color * intensity);
+            m.SetColor("_EmissionColor", color * Mathf.Min(intensity, .12f));
             emissive[color] = m;
             return m;
         }

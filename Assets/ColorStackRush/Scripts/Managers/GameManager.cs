@@ -1,168 +1,165 @@
 using System.Collections;
 using UnityEngine;
-
 namespace ColorStackRush
 {
-    /// <summary>
-    /// Owns the game state machine and time scale. Coordinates the death
-    /// sequence and the end-of-level multiplier-stairs sequence.
-    /// All other systems react to GameEvents.StateChanged / RunStarted.
-    /// </summary>
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
-
-        [Header("Feel")]
-        [SerializeField] float slowMotionScale = 0.65f;   // SlowMotion power-up
-        [SerializeField] float deathSlowMoScale = 0.3f;   // brief dramatic slow-mo on death
-        [SerializeField] float stairStepDuration = 0.24f; // seconds per stair climbed
-
+        [SerializeField] float slowMotionScale = .65f;
+        [SerializeField] float deathSlowMoScale = .3f;
+        [SerializeField] float stairStepDuration = .24f;
         public GameState State { get; private set; } = GameState.MainMenu;
-
+        public RunConfig CurrentRun { get; private set; }
+        public RunResult LastResult { get; private set; }
+        public int RunId { get; private set; }
+        public bool ResultCommitted { get; private set; }
+        public bool ResultSaveFailed { get; private set; }
+        public bool ResultSavePending => resultSaveInFlight || (pendingResultAvailable && (State == GameState.Finish || State == GameState.Dying));
+        bool resultSaveInFlight, pendingResultAvailable;
+        RunResult pendingResult;
         bool slowMotionActive;
-
-        void Awake()
+        void Awake() { Instance = this; CurrentRun = RunConfig.Level(SaveManager.Data.highestUnlockedLevel); }
+        void OnEnable() { GameEvents.PlayerDied += OnPlayerDied; GameEvents.FinishReached += OnFinishReached; }
+        void OnDisable() { GameEvents.PlayerDied -= OnPlayerDied; GameEvents.FinishReached -= OnFinishReached; CancelSequences(); if (Instance == this) Instance = null; Time.timeScale = 1; Time.fixedDeltaTime = .02f; }
+        public void StartRun() => StartRun(CurrentRun);
+        public void StartRun(RunConfig config)
         {
-            Instance = this;
-            Application.targetFrameRate = 60; // mobile: lock to 60 FPS target
+            config = RunConfig.Level(config.levelId);
+            if (!Progression.IsUnlocked(SaveManager.Data, config.levelId) || !SaveManager.TryBeginTransaction()) return;
+            try
+            {
+                CancelSequences();
+                RunId++;
+                ResultCommitted = false;
+                ResultSaveFailed = false;
+                resultSaveInFlight = pendingResultAvailable = false;
+                slowMotionActive = false;
+                CurrentRun = config;
+                SetState(GameState.MainMenu);
+                GameEvents.RaiseRunConfigured(config);
+                CurrencyManager.ResetRunCoins();
+                GameEvents.RaiseRunStarted();
+                SetState(GameState.Playing);
+            }
+            finally { SaveManager.EndTransaction(); }
         }
-
-        void OnEnable()
+        void CancelSequences()
         {
-            GameEvents.PlayerDied += OnPlayerDied;
-            GameEvents.FinishReached += OnFinishReached;
+            StopAllCoroutines();
+            if (PlayerController.Instance != null) Juice.ForgetTransform(PlayerController.Instance.transform);
         }
-
-        void OnDisable()
+        public void PauseGame() { if (State == GameState.Playing) SetState(GameState.Paused); }
+        public void ResumeGame() { if (State == GameState.Paused) SetState(GameState.Playing); }
+        public void GoToMenu() { CancelSequences(); slowMotionActive = false; SaveManager.Save(); SetState(GameState.MainMenu); }
+        public void ContinueLevel()
         {
-            GameEvents.PlayerDied -= OnPlayerDied;
-            GameEvents.FinishReached -= OnFinishReached;
+            if (!ResultCommitted || !LastResult.completed) return;
+            long next = LastResult.config.levelId < long.MaxValue ? LastResult.config.levelId + 1 : long.MaxValue;
+            StartRun(RunConfig.Level(next));
         }
-
-        // --- Public flow API (called by UI buttons) ---
-
-        /// <summary>Starts a fresh run: everything resets via RunStarted, then play begins.</summary>
-        public void StartRun()
-        {
-            GameEvents.RaiseRunStarted();
-            SetState(GameState.Playing);
-        }
-
-        public void PauseGame()
-        {
-            if (State == GameState.Playing) SetState(GameState.Paused);
-        }
-
-        public void ResumeGame()
-        {
-            if (State == GameState.Paused) SetState(GameState.Playing);
-        }
-
-        public void GoToMenu() => SetState(GameState.MainMenu);
-
-        /// <summary>Called by the SlowMotion power-up.</summary>
-        public void SetSlowMotion(bool active)
-        {
-            slowMotionActive = active;
-            ApplyTimeScale();
-        }
-
-        // --- State machine ---
-
-        void SetState(GameState newState)
-        {
-            State = newState;
-            ApplyTimeScale();
-            GameEvents.RaiseStateChanged(newState);
-        }
-
+        public void SetSlowMotion(bool active) { slowMotionActive = active; ApplyTimeScale(); }
+        void SetState(GameState state) { State = state; ApplyTimeScale(); GameEvents.RaiseStateChanged(state); }
         void ApplyTimeScale()
         {
-            float scale = 1f;
-            if (State == GameState.Paused) scale = 0f;
-            else if (State == GameState.Playing && slowMotionActive) scale = slowMotionScale;
-
-            Time.timeScale = scale;
-            if (scale > 0f) Time.fixedDeltaTime = 0.02f * scale;
+            Time.timeScale = State == GameState.Paused ? 0 : State == GameState.Dying ? deathSlowMoScale : State == GameState.Playing && slowMotionActive ? slowMotionScale : 1;
+            Time.fixedDeltaTime = .02f * (Time.timeScale > 0 ? Time.timeScale : 1);
         }
-
-        // Auto-pause when the app loses focus (phone call, home button...).
-        void OnApplicationPause(bool paused)
-        {
-            if (paused && State == GameState.Playing) PauseGame();
-        }
-
-        // --- Death ---
-
+        void OnApplicationPause(bool paused) { if (paused) { PauseGame(); SaveManager.Save(); } }
+        void OnApplicationFocus(bool focused) { if (!focused) { PauseGame(); SaveManager.Save(); } }
+        void OnApplicationQuit() => SaveManager.Save();
         void OnPlayerDied()
         {
             if (State != GameState.Playing) return;
-            StartCoroutine(DeathSequence());
+            SetState(GameState.Dying);
+            StartCoroutine(DeathSequence(RunId));
         }
-
-        /// <summary>Brief dramatic slow-motion, then the Game Over screen.</summary>
-        IEnumerator DeathSequence()
+        IEnumerator DeathSequence(int id)
         {
-            Time.timeScale = deathSlowMoScale;
-            yield return new WaitForSecondsRealtime(0.7f);
-
-            CommitRunAndSave();
-            SetState(GameState.GameOver);
+            yield return new WaitForSecondsRealtime(.7f);
+            if (id != RunId || State != GameState.Dying) yield break;
+            CommitResult(false, 0);
         }
-
-        // --- Finish / victory ---
-
         void OnFinishReached()
         {
             if (State != GameState.Playing) return;
-            StartCoroutine(FinishSequence());
-        }
-
-        /// <summary>
-        /// The level-end payoff: the ball hops up the multiplier stairs,
-        /// converting one stack block per step into escalating bonus points.
-        /// </summary>
-        IEnumerator FinishSequence()
-        {
             SetState(GameState.Finish);
-
+            StartCoroutine(FinishSequence(RunId));
+        }
+        IEnumerator FinishSequence(int id)
+        {
             var player = PlayerController.Instance;
             var stack = player.GetComponent<PlayerStack>();
             var steps = SpawnManager.Instance.FinishSteps;
-
-            for (int i = 0; i < steps.Count; i++)
+            int climbed = 0;
+            for (int i = 0; i < steps.Count && id == RunId; i++)
             {
-                if (!stack.ConsumeTop()) break; // out of blocks: stop climbing
-
-                // Hop onto the next step.
+                if (!stack.ConsumeTop()) break;
                 bool arrived = false;
                 Juice.MoveTo(player.transform, steps[i], stairStepDuration, () => arrived = true);
-                while (!arrived) yield return null;
-
-                // Escalating reward per step: step 1 = 10, step 2 = 20 ...
-                int points = SpawnManager.StepValue(i);
-                ScoreManager.Instance.AddStairBonus(points, steps[i] + Vector3.up);
-
-                AudioManager.Instance?.PlaySfx(SfxId.Stair, 1f + i * 0.06f);
-                Juice.PunchScale(player.transform, 0.3f, 0.15f);
-                CameraFollow.Instance?.Punch(0.25f);
+                while (!arrived && id == RunId) yield return null;
+                if (id != RunId) yield break;
+                climbed++;
+                ScoreManager.Instance.AddStairBonus(SpawnManager.StepValue(i), steps[i] + Vector3.up);
+                AudioManager.Instance?.PlaySfx(SfxId.Stair, 1 + i * .06f);
+                Juice.PunchScale(player.transform, .3f, .15f);
+                CameraFollow.Instance?.Punch(.25f);
                 HapticsManager.Light();
             }
-
-            // Celebration!
             ParticleFactory.Confetti(player.transform.position);
             yield return new WaitForSecondsRealtime(1.1f);
-
-            SaveManager.Data.level++;
-            CommitRunAndSave();
-            SetState(GameState.Victory);
+            if (id != RunId || State != GameState.Finish) yield break;
+            CommitResult(true, climbed);
         }
-
-        /// <summary>Persists high score + coins at the end of every run.</summary>
-        void CommitRunAndSave()
+        void CommitResult(bool completed, int stairs)
         {
-            ScoreManager.Instance?.CommitRunResults();
-            SaveManager.Save();
+            if (ResultCommitted || pendingResultAvailable || resultSaveInFlight) return;
+            var score = ScoreManager.Instance;
+            score.CommitRunResults();
+            pendingResult = new RunResult { config = CurrentRun, score = score.Score, stairBonus = score.StairBonusTotal, coins = CurrencyManager.RunCoins,
+                distance = completed ? CurrentRun.Length : PlayerController.Instance.Distance, completed = completed, stairs = stairs, stars = completed ? RunResult.StarsFor(stairs) : 0 };
+            pendingResultAvailable = true;
+            StartCoroutine(PersistResultWhenReady(RunId));
+        }
+        public void RetryResultSave()
+        {
+            if (!ResultSaveFailed || !pendingResultAvailable || resultSaveInFlight) return;
+            ResultSaveFailed = false;
+            SetState(pendingResult.completed ? GameState.Finish : GameState.Dying);
+            StartCoroutine(PersistResultWhenReady(RunId));
+        }
+        IEnumerator PersistResultWhenReady(int id)
+        {
+            while (true)
+            {
+                if (id != RunId || (State != GameState.Finish && State != GameState.Dying)) yield break;
+                if (SaveManager.TryBeginTransaction()) break;
+                yield return null;
+            }
+            resultSaveInFlight = true;
+            var result = pendingResult;
+            var data = SaveManager.Data;
+            var snapshot = new Progression.Snapshot(data, result.config.levelId);
+            Progression.Apply(data, result);
+            SaveManager.SaveAsync(success =>
+            {
+                if (!success) snapshot.Restore(data);
+                SaveManager.EndTransaction();
+                if (this == null || Instance != this || !isActiveAndEnabled || id != RunId) return;
+                resultSaveInFlight = false;
+                if (State != GameState.Finish && State != GameState.Dying) return;
+                if (!success)
+                {
+                    ResultSaveFailed = true;
+                    SetState(GameState.GameOver);
+                    return;
+                }
+                ResultCommitted = true;
+                ResultSaveFailed = false;
+                pendingResultAvailable = false;
+                LastResult = result;
+                GameEvents.RaiseRunCompleted(result);
+                SetState(result.completed ? GameState.Victory : GameState.GameOver);
+            });
         }
     }
 }

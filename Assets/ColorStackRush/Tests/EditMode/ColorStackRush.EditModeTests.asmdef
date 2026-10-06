@@ -1,0 +1,16 @@
+{
+  "name": "ColorStackRush.EditModeTests",
+  "references": [
+    "ColorStackRush.Runtime",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "UnityEngine.UI"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false,
+  "includePlatforms": [
+    "Editor"
+  ]
+}

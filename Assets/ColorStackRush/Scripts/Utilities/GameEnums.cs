@@ -8,7 +8,8 @@ namespace ColorStackRush
         Paused,     // Time frozen, pause overlay shown
         Finish,     // Climbing the multiplier stairs (scripted sequence)
         GameOver,   // Stack reached zero
-        Victory     // Finished the level stairs
+        Victory,    // Finished the level stairs
+        Dying       // Locked terminal transition; gameplay stops immediately
     }
 
     /// <summary>The four collectible colors. Values map into ColorPalette.</summary>

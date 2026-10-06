@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="14" result="Passed" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:32Z" duration="13,3320916">
+  <test-suite type="TestSuite" id="1025" name="My project (1)" fullname="My project (1)" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:32Z" duration="13.332092" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1020" name="ColorStackRush.PlayModeTests.dll" fullname="C:/Users/tnayl/Documents/Codex/2026-10-04/benim-color-stack-rush-diye-bir/work/Color-Stack-Rush/Library/ScriptAssemblies/ColorStackRush.PlayModeTests.dll" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:32Z" duration="13.323929" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="34888" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1021" name="ColorStackRush" fullname="ColorStackRush" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:32Z" duration="13.322752" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1022" name="Tests" fullname="ColorStackRush.Tests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:32Z" duration="13.321946" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="DurableRunTests" fullname="ColorStackRush.Tests.DurableRunTests" classname="ColorStackRush.Tests.DurableRunTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:23Z" duration="4.736969" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1003" name="DisabledManagerCompletesDurableWriteWithoutPublishingStaleResult" fullname="ColorStackRush.Tests.DurableRunTests.DisabledManagerCompletesDurableWriteWithoutPublishingStaleResult" methodname="DisabledManagerCompletesDurableWriteWithoutPublishingStaleResult" classname="ColorStackRush.Tests.DurableRunTests" runstate="Runnable" seed="1228884858" result="Passed" start-time="2026-10-04 13:43:19Z" end-time="2026-10-04 13:43:21Z" duration="2.042033" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="FailedDurableResultRollsBackAndRetryUnlocks19ExactlyOnce" fullname="ColorStackRush.Tests.DurableRunTests.FailedDurableResultRollsBackAndRetryUnlocks19ExactlyOnce" methodname="FailedDurableResultRollsBackAndRetryUnlocks19ExactlyOnce" classname="ColorStackRush.Tests.DurableRunTests" runstate="Runnable" seed="128549932" result="Passed" start-time="2026-10-04 13:43:21Z" end-time="2026-10-04 13:43:22Z" duration="1.349251" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1004" name="PendingResultCannotStartNewRunOrReopenResultAfterMenu" fullname="ColorStackRush.Tests.DurableRunTests.PendingResultCannotStartNewRunOrReopenResultAfterMenu" methodname="PendingResultCannotStartNewRunOrReopenResultAfterMenu" classname="ColorStackRush.Tests.DurableRunTests" runstate="Runnable" seed="1484739915" result="Passed" start-time="2026-10-04 13:43:22Z" end-time="2026-10-04 13:43:23Z" duration="1.331365" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1005" name="RunFlowTests" fullname="ColorStackRush.Tests.RunFlowTests" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-04 13:43:23Z" end-time="2026-10-04 13:43:31Z" duration="7.556221" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1010" name="BackgroundingSavesEarnedCoinsWithoutRegrantingThem" fullname="ColorStackRush.Tests.RunFlowTests.BackgroundingSavesEarnedCoinsWithoutRegrantingThem" methodname="BackgroundingSavesEarnedCoinsWithoutRegrantingThem" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="834766631" result="Passed" start-time="2026-10-04 13:43:23Z" end-time="2026-10-04 13:43:24Z" duration="1.018475" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1012" name="ColorOnlyHudAndNextActionContinueBeyond18" fullname="ColorStackRush.Tests.RunFlowTests.ColorOnlyHudAndNextActionContinueBeyond18" methodname="ColorOnlyHudAndNextActionContinueBeyond18" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="907546641" result="Passed" start-time="2026-10-04 13:43:24Z" end-time="2026-10-04 13:43:26Z" duration="1.583916" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="DeathLocksImmediatelyAndCommitsExactlyOnce" fullname="ColorStackRush.Tests.RunFlowTests.DeathLocksImmediatelyAndCommitsExactlyOnce" methodname="DeathLocksImmediatelyAndCommitsExactlyOnce" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="1897489364" result="Passed" start-time="2026-10-04 13:43:26Z" end-time="2026-10-04 13:43:27Z" duration="1.013742" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="FinishCancellationCannotUnlockNextLevel" fullname="ColorStackRush.Tests.RunFlowTests.FinishCancellationCannotUnlockNextLevel" methodname="FinishCancellationCannotUnlockNextLevel" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="1075779721" result="Passed" start-time="2026-10-04 13:43:27Z" end-time="2026-10-04 13:43:29Z" duration="1.610363" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="PauseFreezesPhysicsAndRestartRestoresStackLimit" fullname="ColorStackRush.Tests.RunFlowTests.PauseFreezesPhysicsAndRestartRestoresStackLimit" methodname="PauseFreezesPhysicsAndRestartRestoresStackLimit" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="60079958" result="Passed" start-time="2026-10-04 13:43:29Z" end-time="2026-10-04 13:43:30Z" duration="1.093846" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1007" name="RapidRestartCancelsPreviousTerminalSequence" fullname="ColorStackRush.Tests.RunFlowTests.RapidRestartCancelsPreviousTerminalSequence" methodname="RapidRestartCancelsPreviousTerminalSequence" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="1587653927" result="Passed" start-time="2026-10-04 13:43:30Z" end-time="2026-10-04 13:43:31Z" duration="1.012100" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1011" name="ReusedPickupRestoresVisualPoseAndRootScale" fullname="ColorStackRush.Tests.RunFlowTests.ReusedPickupRestoresVisualPoseAndRootScale" methodname="ReusedPickupRestoresVisualPoseAndRootScale" classname="ColorStackRush.Tests.RunFlowTests" runstate="Runnable" seed="955749342" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:31Z" duration="0.210519" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1014" name="SteeringTests" fullname="ColorStackRush.Tests.SteeringTests" classname="ColorStackRush.Tests.SteeringTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:31Z" duration="0.197425" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1017" name="GestureStartingOnUiStaysBlockedWhenDraggedAway" fullname="ColorStackRush.Tests.SteeringTests.GestureStartingOnUiStaysBlockedWhenDraggedAway" methodname="GestureStartingOnUiStaysBlockedWhenDraggedAway" classname="ColorStackRush.Tests.SteeringTests" runstate="Runnable" seed="618715680" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:31Z" duration="0.086846" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1015" name="PauseAndMenuNeverAccumulatePointerMovement" fullname="ColorStackRush.Tests.SteeringTests.PauseAndMenuNeverAccumulatePointerMovement" methodname="PauseAndMenuNeverAccumulatePointerMovement" classname="ColorStackRush.Tests.SteeringTests" runstate="Runnable" seed="679286665" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:31Z" duration="0.022576" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1016" name="SecondFingerCannotTakeOverAfterFirstLifts" fullname="ColorStackRush.Tests.SteeringTests.SecondFingerCannotTakeOverAfterFirstLifts" methodname="SecondFingerCannotTakeOverAfterFirstLifts" classname="ColorStackRush.Tests.SteeringTests" runstate="Runnable" seed="1420611683" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:31Z" duration="0.072806" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1018" name="VisualFramingTests" fullname="ColorStackRush.Tests.VisualFramingTests" classname="ColorStackRush.Tests.VisualFramingTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:32Z" duration="0.827798" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1019" name="NormalSpeedPortraitKeepsPlayerAndRoadReadable" fullname="ColorStackRush.Tests.VisualFramingTests.NormalSpeedPortraitKeepsPlayerAndRoadReadable" methodname="NormalSpeedPortraitKeepsPlayerAndRoadReadable" classname="ColorStackRush.Tests.VisualFramingTests" runstate="Runnable" seed="572839410" result="Passed" start-time="2026-10-04 13:43:31Z" end-time="2026-10-04 13:43:32Z" duration="0.824908" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[CSR Framing] portrait visibleTriangles=4728, visibleMeshRenderers=25, playerViewportY=0,422, playerDiameter=0,950
+Saving results to: C:\Users\tnayl\Documents\Codex\2026-10-04\benim-color-stack-rush-diye-bir\outputs\verification\web-playmode.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

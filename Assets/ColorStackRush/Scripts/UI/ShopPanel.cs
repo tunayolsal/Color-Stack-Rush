@@ -13,7 +13,8 @@ namespace ColorStackRush
         static readonly Vector2 CardSize = new Vector2(470f, 330f);
         const float CardSpacing = 24f;
 
-        Text coinsText;
+        Text coinsText, message;
+        bool pending;
         RectTransform content;
 
         public void Build()
@@ -21,16 +22,17 @@ namespace ColorStackRush
             var root = transform;
             UIFactory.CreatePanel(root, "Background", ColorPalette.UiBackground);
 
-            UIFactory.CreateText(root, "Title", "SHOP", 76, ColorPalette.UiText,
+            UIFactory.CreateText(root, "Title", "Mağaza", 76, ColorPalette.UiText,
                 new Vector2(0f, -90f), new Vector2(400f, 100f), new Vector2(0.5f, 1f));
 
             UIFactory.CreateImage(root, "CoinIcon", ColorPalette.Coin, new Vector2(-190f, -80f), Vector2.one * 44f, new Vector2(1f, 1f), circle: true);
             coinsText = UIFactory.CreateText(root, "Coins", "0", 46, ColorPalette.UiText,
                 new Vector2(-100f, -80f), new Vector2(160f, 60f), new Vector2(1f, 1f));
 
+            message = UIFactory.CreateText(root, "Message", "Kozmetikler yalnız görünüşü değiştirir.", 26, ColorPalette.UiText, new Vector2(0, -190), new Vector2(950, 65), new Vector2(.5f, 1));
             BuildScrollArea(root);
 
-            UIFactory.CreateButton(root, "CloseButton", "CLOSE", new Vector2(0f, 90f), new Vector2(420f, 110f),
+            UIFactory.CreateButton(root, "CloseButton", "Geri", new Vector2(0f, 90f), new Vector2(420f, 110f),
                 ColorPalette.UiAccent, () => UIManager.Instance.CloseOverlays(), 44, null, new Vector2(0.5f, 0f));
         }
 
@@ -41,7 +43,7 @@ namespace ColorStackRush
             viewportRt.anchorMin = new Vector2(0.5f, 0f);
             viewportRt.anchorMax = new Vector2(0.5f, 1f);
             viewportRt.pivot = new Vector2(0.5f, 0.5f);
-            viewportRt.sizeDelta = new Vector2(Columns * (CardSize.x + CardSpacing) + CardSpacing, -420f);
+            viewportRt.sizeDelta = new Vector2(Columns * (CardSize.x + CardSpacing) + CardSpacing, -520f);
             viewportRt.anchoredPosition = new Vector2(0f, 30f);
             viewportRt.gameObject.AddComponent<RectMask2D>();
             var viewportImg = viewportRt.gameObject.AddComponent<Image>();
@@ -68,6 +70,7 @@ namespace ColorStackRush
         {
             if (content == null) return;
             coinsText.text = SaveManager.Data.coins.ToString();
+            pending = SaveManager.IsTransactionPending;
 
             // Rebuild is rare (menu only), so destroying children is acceptable here.
             for (int i = content.childCount - 1; i >= 0; i--)
@@ -77,6 +80,15 @@ namespace ColorStackRush
                 BuildCard(i);
         }
 
+        void Transact(int index, bool buy)
+        {
+            if (pending || SaveManager.IsTransactionPending) return;
+            pending = true; message.text = "Kaydediliyor…";
+            foreach (var button in content.GetComponentsInChildren<Button>()) button.interactable = false;
+            System.Action<bool> done = success => { pending = false; if (this == null) return; Refresh(); message.text = success ? "Stilin hazır!" : "İşlem tamamlanamadı. Tekrar dene."; };
+            bool accepted = buy ? ShopManager.Instance.TryBuyAsync(index, done) : ShopManager.Instance.SelectAsync(index, done);
+            if (!accepted) done(false);
+        }
         void BuildCard(int index)
         {
             var skin = ShopManager.GetSkin(index);
@@ -94,33 +106,33 @@ namespace ColorStackRush
             // Skin preview ball.
             UIFactory.CreateImage(card.transform, "Preview", skin.primary, new Vector2(0f, 65f), Vector2.one * 130f, circle: true);
 
-            UIFactory.CreateText(card.transform, "Name", skin.name.ToUpper(), 36, ColorPalette.UiText,
+            UIFactory.CreateText(card.transform, "Name", UiLabels.SkinName(index), 36, ColorPalette.UiText,
                 new Vector2(0f, -30f), new Vector2(400f, 44f));
 
             // Action button reflects the card state.
             if (selected)
             {
-                UIFactory.CreateButton(card.transform, "Action", "SELECTED", new Vector2(0f, -110f), new Vector2(300f, 80f),
-                    ColorPalette.UiGood, () => { }, 32);
+                UIFactory.CreateButton(card.transform, "Action", "Seçili", new Vector2(0f, -110f), new Vector2(300f, 80f),
+                    ColorPalette.UiGood, () => { }, 32).interactable = false;
             }
             else if (unlocked)
             {
                 int captured = index;
-                UIFactory.CreateButton(card.transform, "Action", "SELECT", new Vector2(0f, -110f), new Vector2(300f, 80f),
-                    ColorPalette.Get(GameColor.Blue), () => { ShopManager.Instance.Select(captured); Refresh(); }, 32);
+                UIFactory.CreateButton(card.transform, "Action", "Seç", new Vector2(0f, -110f), new Vector2(300f, 80f),
+                    ColorPalette.Get(GameColor.Blue), () => Transact(captured, false), 32).interactable = !pending;
             }
             else
             {
                 int captured = index;
                 bool affordable = SaveManager.Data.coins >= skin.cost;
-                var buyButton = UIFactory.CreateButton(card.transform, "Action", $"BUY  {skin.cost}", new Vector2(0f, -110f), new Vector2(300f, 80f),
+                var buyButton = UIFactory.CreateButton(card.transform, "Action", $"Al  {skin.cost}", new Vector2(0f, -110f), new Vector2(300f, 80f),
                     affordable ? ColorPalette.UiAccent : new Color(0.75f, 0.73f, 0.78f),
                     () =>
                     {
-                        if (ShopManager.Instance.TryBuy(captured)) Refresh();
-                        else Juice.PunchScale(coinsText.transform, 0.4f, 0.3f); // "can't afford" feedback
+                        Transact(captured, true);
                     }, 32);
 
+                buyButton.interactable = affordable && !pending;
                 // Little coin icon inside the buy label.
                 UIFactory.CreateImage(buyButton.transform, "Coin", ColorPalette.Coin, new Vector2(115f, 0f), Vector2.one * 30f, circle: true);
             }

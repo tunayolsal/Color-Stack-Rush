@@ -44,7 +44,8 @@ namespace ColorStackRush
             bool keepCollider = false)
         {
             var go = new GameObject(string.IsNullOrEmpty(name) ? type.ToString() : name);
-            go.AddComponent<MeshFilter>().sharedMesh = GetBuiltinMesh(type);
+            var mesh = GetBuiltinMesh(type);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
             go.AddComponent<MeshRenderer>();
 
             if (keepCollider)
@@ -57,7 +58,16 @@ namespace ColorStackRush
             var t = go.transform;
             t.SetParent(parent, false);
             t.localPosition = localPosition;
-            t.localScale = localScale;
+            // The resource FBX and CreatePrimitive meshes may use different units.
+            // Normalize from bounds without reading vertices (safe for unreadable Web meshes).
+            Vector3 expected = type == PrimitiveType.Cylinder || type == PrimitiveType.Capsule ? new Vector3(1, 2, 1)
+                : type == PrimitiveType.Plane ? new Vector3(10, 0, 10)
+                : type == PrimitiveType.Quad ? new Vector3(1, 1, 0) : Vector3.one;
+            Vector3 actual = mesh.bounds.size;
+            t.localScale = Vector3.Scale(localScale, new Vector3(
+                actual.x > .0001f ? expected.x / actual.x : 1,
+                actual.y > .0001f ? expected.y / actual.y : 1,
+                actual.z > .0001f ? expected.z / actual.z : 1));
 
             if (material != null)
                 go.GetComponent<MeshRenderer>().sharedMaterial = material;
