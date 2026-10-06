@@ -30,14 +30,35 @@ namespace ColorStackRush
             transform.rotation = Quaternion.Euler(pitchAngle, 0f, 0f);
         }
 
-        void OnEnable() => GameEvents.BlockCollected += OnBlockCollected;
-        void OnDisable() => GameEvents.BlockCollected -= OnBlockCollected;
+        void OnEnable()
+        {
+            GameEvents.BlockCollected += OnBlockCollected;
+            // The rig is built after the player, so this callback sees the
+            // already-reset Rigidbody/transform on RunStarted.
+            GameEvents.RunStarted += ResetForRun;
+        }
+        void OnDisable()
+        {
+            GameEvents.BlockCollected -= OnBlockCollected;
+            GameEvents.RunStarted -= ResetForRun;
+            StopAllCoroutines();
+        }
 
         public void SetTarget(Transform newTarget)
         {
             target = newTarget;
-            if (target != null)
-                transform.position = DesiredPosition();
+            ResetForRun();
+        }
+
+        /// <summary>Discard the previous stairs, follow momentum and feedback before a new run.</summary>
+        public void ResetForRun()
+        {
+            StopAllCoroutines();
+            bounceOffset = 0;
+            velocity = Vector3.zero;
+            transform.rotation = Quaternion.Euler(pitchAngle, 0, 0);
+            if (target != null) transform.position = DesiredPosition();
+            GetComponentInChildren<CameraShake>()?.ResetForRun();
         }
 
         void LateUpdate()

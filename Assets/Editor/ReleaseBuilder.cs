@@ -78,7 +78,7 @@ public static class ReleaseBuilder
         if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.WebGL, BuildTarget.WebGL))
             throw new InvalidOperationException("Install Web Build Support for Unity 6000.3.3f1.");
         Prepare();
-        PlayerSettings.bundleVersion = "0.3.0";
+        PlayerSettings.bundleVersion = "0.4.0";
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.WebGL, ScriptingImplementation.IL2CPP);
         PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.WebGL, ManagedStrippingLevel.Minimal);
         PlayerSettings.WebGL.template = "PROJECT:ColorStackRush";
@@ -114,6 +114,11 @@ public static class ReleaseBuilder
     }
     static void Build(BuildTarget target, string output)
     {
+        var buildGroup = BuildPipeline.GetBuildTargetGroup(target);
+        var compileTarget = NamedBuildTarget.FromBuildTargetGroup(buildGroup);
+        foreach (var symbol in PlayerSettings.GetScriptingDefineSymbols(compileTarget).Split(';'))
+            if (symbol.Trim() == "CSR_JEV_TEST")
+                throw new InvalidOperationException("Remove the local Jev test define before making a public player build.");
         Directory.CreateDirectory(target == BuildTarget.WebGL ? Path.GetFullPath(output) : Path.GetDirectoryName(Path.GetFullPath(output)));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None });
         Debug.Log($"[CSR Build] {target}: {report.summary.result}; errors={report.summary.totalErrors}; size={report.summary.totalSize}");

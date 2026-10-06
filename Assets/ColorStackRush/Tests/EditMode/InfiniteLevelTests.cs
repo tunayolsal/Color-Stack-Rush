@@ -149,10 +149,13 @@ namespace ColorStackRush.Tests
         {
             var a = new TrackSegment();
             var b = new TrackSegment();
-            int centreHazards = 0;
+            int compulsoryGates = 0;
             for (long level = 1; level <= 1000; level++)
             {
                 var config = RunConfig.Level(level);
+                var course = TrackPlanner.CreateCourse(config);
+                Assert.That(TrackValidator.ValidateCourse(course, out string error), Is.True, $"level {level}: {error}");
+                Assert.That(TrackValidator.AllConstantPathsDieInOpening(course), Is.True, $"level {level} permits idle play");
                 int powerCount = 0;
                 for (int i = 0; TrackPlanner.FirstZ + (i + 1) * TrackSegment.Length < config.Length; i++)
                 {
@@ -170,14 +173,14 @@ namespace ColorStackRush.Tests
                         Assert.That(a.items[j].phase, Is.EqualTo(b.items[j].phase));
                         Assert.That(a.items[j].color, Is.EqualTo(b.items[j].color));
                         if (a.items[j].kind == TrackKind.PowerUp) powerCount++;
-                        if (a.items[j].kind == TrackKind.Wall && Mathf.Abs(a.items[j].x) < .7f) centreHazards++;
+                        if (a.items[j].kind == TrackKind.RouteGate) compulsoryGates++;
                         if (level == 1) Assert.That(a.items[j].kind, Is.Not.EqualTo(TrackKind.Slider).And.Not.EqualTo(TrackKind.Spinner));
                     }
                 }
                 Assert.That(powerCount, Is.LessThanOrEqualTo(1));
                 if (level <= 2) Assert.That(powerCount, Is.Zero);
             }
-            Assert.That(centreHazards, Is.GreaterThan(100));
+            Assert.That(compulsoryGates, Is.GreaterThanOrEqualTo(4000));
             Assert.That(TrackPlanner.WarningDistance / 18f, Is.GreaterThanOrEqualTo(2));
         }
 

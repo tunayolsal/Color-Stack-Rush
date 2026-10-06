@@ -120,7 +120,7 @@ namespace ColorStackRush.Tests
             Assert.That(panel.transform.Find("Card/NextButton/Label").GetComponent<Text>().text, Is.EqualTo("Sonraki bölüm"));
             if (snapshots != null) Capture(snapshots, "final-action");
         }
-        [UnityTest, Timeout(360000)] public IEnumerator First20LevelsAndLargeIdsFinishThroughRealPhysicsAndInput()
+        [UnityTest, Timeout(600000)] public IEnumerator First20LevelsAndLargeIdsFinishThroughRealPhysicsAndInput()
         {
             // Batch-mode Editor has no focused Game View. Keep synthetic pointer
             // events in the player, while exercising the normal input/physics loop.
@@ -184,9 +184,14 @@ namespace ColorStackRush.Tests
                     {
                         Assert.That(Time.realtimeSinceStartup - started, Is.LessThan(30), "Course stalled at level " + level);
                         seconds += Time.deltaTime;
-                        Time.timeScale = 12; Time.fixedDeltaTime = .02f;
-                        int index = Mathf.Max(0, Mathf.FloorToInt((PlayerController.Instance.Distance - TrackPlanner.FirstZ) / TrackSegment.Length));
-                        float nextTarget = TrackPlanner.SafeX(GameManager.Instance.CurrentRun, index);
+                        Time.timeScale = 4; Time.fixedDeltaTime = .02f;
+                        var course = SpawnManager.Instance.CurrentCourse;
+                        Assert.That(course, Is.Not.Null);
+                        // The pointer is queued after Update and reaches steering
+                        // after the next dynamic input pass. Compensate that
+                        // render delay and the same 14/s smoothing as the player.
+                        float lookahead = Mathf.Min(4, PlayerController.Instance.CurrentSpeed * (1f / 14f + 2 * Time.deltaTime));
+                        float nextTarget = course.SampleRouteX(PlayerController.Instance.Distance + lookahead);
                         state.position.x += (nextTarget - target) * Screen.width / 8.5f;
                         target = nextTarget;
                         botTarget = target;
@@ -213,6 +218,56 @@ namespace ColorStackRush.Tests
             {
                 GameEvents.BlockCollected -= collect; GameEvents.ObstacleHit -= hit;
                 InputSystem.RemoveDevice(mouse); Time.timeScale = 1; Time.fixedDeltaTime = .02f;
+                InputSystem.settings.editorInputBehaviorInPlayMode = previousEditorInput;
+                InputSystem.settings.backgroundBehavior = previousBackgroundInput;
+            }
+        }
+        [UnityTest, Timeout(360000)] public IEnumerator IdleAndSingleSteerRunsCannotUnlockLevels()
+        {
+            var previousEditorInput = InputSystem.settings.editorInputBehaviorInPlayMode;
+            var previousBackgroundInput = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            var mouse = InputSystem.AddDevice<Mouse>();
+            int resultCount = 0;
+            Action<RunResult> finished = _ => resultCount++;
+            GameEvents.RunCompleted += finished;
+            try
+            {
+                foreach (long level in new long[] { 1, 4, 7, 13, 19, 1000 })
+                    foreach (float requestedX in new float[] { -2.6f, -1.3f, -1.1f, 0, 1.1f, 1.3f, 2.6f })
+                    {
+                        Time.timeScale = 1;
+                        SaveManager.Data.highestUnlockedLevel = level;
+                        resultCount = 0;
+                        GameManager.Instance.StartRun(RunConfig.Level(level));
+                        var pointer = new MouseState { position = new Vector2(Screen.width * .5f, Screen.height * .45f) };
+                        InputSystem.QueueStateEvent(mouse, pointer); yield return null; yield return null;
+                        pointer = pointer.WithButton(MouseButton.Left);
+                        InputSystem.QueueStateEvent(mouse, pointer); yield return null;
+                        pointer.position.x += requestedX * Screen.width / 8.5f;
+                        InputSystem.QueueStateEvent(mouse, pointer); yield return null;
+                        InputSystem.QueueStateEvent(mouse, new MouseState { position = pointer.position });
+                        yield return null;
+                        Time.timeScale = 12;
+                        float started = Time.realtimeSinceStartup;
+                        while (GameManager.Instance.State == GameState.Playing || GameManager.Instance.State == GameState.Dying)
+                        {
+                            Assert.That(Time.realtimeSinceStartup - started, Is.LessThan(15), $"Passive course stalled: {level}, x={requestedX}");
+                            yield return null;
+                        }
+                        Time.timeScale = 1;
+                        Assert.That(GameManager.Instance.State, Is.EqualTo(GameState.GameOver), $"Passive player won: {level}, x={requestedX}");
+                        Assert.That(SaveManager.Data.highestUnlockedLevel, Is.EqualTo(level));
+                        Assert.That(GameManager.Instance.LastResult.completed, Is.False);
+                        Assert.That(resultCount, Is.EqualTo(1), "A passive death must commit one result");
+                    }
+            }
+            finally
+            {
+                GameEvents.RunCompleted -= finished;
+                InputSystem.RemoveDevice(mouse);
+                Time.timeScale = 1;
                 InputSystem.settings.editorInputBehaviorInPlayMode = previousEditorInput;
                 InputSystem.settings.backgroundBehavior = previousBackgroundInput;
             }

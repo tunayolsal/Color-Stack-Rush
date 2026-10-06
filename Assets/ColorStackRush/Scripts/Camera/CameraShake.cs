@@ -24,12 +24,14 @@ namespace ColorStackRush
         {
             GameEvents.ObstacleHit += OnObstacleHit;
             GameEvents.PlayerDied += OnPlayerDied;
+            GameEvents.RunStarted += ResetForRun;
         }
 
         void OnDisable()
         {
             GameEvents.ObstacleHit -= OnObstacleHit;
             GameEvents.PlayerDied -= OnPlayerDied;
+            GameEvents.RunStarted -= ResetForRun;
         }
 
         void OnObstacleHit(Vector3 pos) => Shake(0.55f);
@@ -37,6 +39,13 @@ namespace ColorStackRush
 
         /// <summary>Adds shake energy (stacks with current shake, clamped).</summary>
         public void Shake(float amount) => trauma = SaveManager.Data.reducedMotion ? 0 : Mathf.Clamp(trauma + amount, 0, .65f);
+
+        public void ResetForRun()
+        {
+            trauma = 0;
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+        }
 
         void LateUpdate()
         {

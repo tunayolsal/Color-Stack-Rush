@@ -44,7 +44,11 @@ namespace ColorStackRush
 
         void OnBlockCollected(bool correct, Vector3 pos)
         {
-            if (!correct) Show("-1", pos + Vector3.up, ColorPalette.UiBad, 1f);
+            if (!correct)
+            {
+                int damage = GameManager.Instance != null ? GameManager.Instance.CurrentRun.Difficulty.WrongColorDamage : 2;
+                Show("-" + damage, pos + Vector3.up, ColorPalette.UiBad, 1f);
+            }
         }
 
         /// <summary>Spawns a floating text that rises, faces the camera and fades out.</summary>

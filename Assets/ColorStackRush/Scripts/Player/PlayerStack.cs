@@ -135,8 +135,9 @@ namespace ColorStackRush
                 Recycle(block);
             }
 
+            var initialColor = ColorManager.Instance != null ? ColorManager.Instance.ActiveColor : GameColor.Pink;
             for (int i = 0; i < startBlocks; i++)
-                AddBlock(ColorPalette.Get((GameColor)Random.Range(0, 4)));
+                AddBlock(ColorPalette.Get(initialColor));
         }
 
         Transform CreateBlock()

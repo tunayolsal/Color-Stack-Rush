@@ -15,22 +15,23 @@ namespace ColorStackRush
         GameObject tutorialCard;
         public void Build()
         {
-            UIFactory.CreateImage(transform, "Header", new Color(1, 1, 1, .96f), new Vector2(0, -14), new Vector2(1015, 218), new Vector2(.5f, 1));
+            UIFactory.CreateImage(transform, "Header", new Color(1, 1, 1, .96f), new Vector2(0, -14), new Vector2(1015, 290), new Vector2(.5f, 1));
             colorFill = UIFactory.CreateImage(transform, "ActiveColor", ColorPalette.Get(GameColor.Pink), new Vector2(112, -55), new Vector2(82, 82), new Vector2(0, 1));
-            active = UIFactory.CreateText(transform, "Collect", "PEMBE", 22, ColorPalette.UiText, new Vector2(112, -148), new Vector2(180, 38), new Vector2(0, 1));
+            active = UIFactory.CreateText(transform, "Collect", "PEMBE", 32, ColorPalette.UiText, new Vector2(63, -144), new Vector2(180, 44), new Vector2(0, 1));
             score = UIFactory.CreateText(transform, "Score", "0", 54, ColorPalette.UiText, new Vector2(0, -70), new Vector2(440, 72), new Vector2(.5f, 1));
-            UIFactory.CreateText(transform, "ScoreCaption", "PUAN", 20, ColorPalette.UiText, new Vector2(0, -28), new Vector2(220, 32), new Vector2(.5f, 1));
-            combo = UIFactory.CreateText(transform, "Combo", "", 26, ColorPalette.UiAccent, new Vector2(0, -145), new Vector2(360, 35), new Vector2(.5f, 1));
-            wallet = UIFactory.CreateText(transform, "Wallet", "0", 27, ColorPalette.UiText, new Vector2(-200, -60), new Vector2(145, 45), new Vector2(1, 1));
-            UIFactory.CreateImage(transform, "Coin", ColorPalette.Coin, new Vector2(-290, -60), Vector2.one * 25, new Vector2(1, 1), circle: true);
-            UIFactory.CreateButton(transform, "Pause", "II", new Vector2(-95, -99), new Vector2(100, 115), ColorPalette.Get(GameColor.Blue), () => GameManager.Instance.PauseGame(), 35, anchor: new Vector2(1, 1));
+            UIFactory.CreateText(transform, "ScoreCaption", "PUAN", 32, ColorPalette.UiText, new Vector2(0, -22), new Vector2(220, 40), new Vector2(.5f, 1));
+            combo = UIFactory.CreateText(transform, "Combo", "", 32, ColorPalette.UiAccent, new Vector2(0, -144), new Vector2(360, 42), new Vector2(.5f, 1));
+            wallet = UIFactory.CreateText(transform, "Wallet", "0", 32, ColorPalette.UiText, new Vector2(-200, -60), new Vector2(145, 45), new Vector2(1, 1));
+            wallet.resizeTextForBestFit = true; wallet.resizeTextMinSize = 24; wallet.resizeTextMaxSize = 32;
+            UIFactory.CreateImage(transform, "Coin", ColorPalette.Coin, new Vector2(-360, -70), Vector2.one * 25, new Vector2(1, 1), circle: true);
+            UIFactory.CreateButton(transform, "Pause", "II", new Vector2(-95, -55), new Vector2(100, 115), ColorPalette.Get(GameColor.Blue), () => GameManager.Instance.PauseGame(), 35, anchor: new Vector2(1, 1));
             var bar = UIFactory.CreateImage(transform, "ProgressTrack", new Color(.77f, .85f, .91f), new Vector2(0, -190), new Vector2(945, 10), new Vector2(.5f, 1));
             progressFill = UIFactory.CreateImage(bar.transform, "Fill", ColorPalette.Get(GameColor.Green), Vector2.zero, Vector2.zero);
             progressFill.rectTransform.anchorMin = Vector2.zero; progressFill.rectTransform.anchorMax = Vector2.one;
             progressFill.rectTransform.offsetMin = progressFill.rectTransform.offsetMax = Vector2.zero;
-            progress = UIFactory.CreateText(transform, "Progress", "", 27, ColorPalette.UiText, new Vector2(0, -245), new Vector2(850, 45), new Vector2(.5f, 1));
+            progress = UIFactory.CreateText(transform, "Progress", "", 32, ColorPalette.UiText, new Vector2(0, -245), new Vector2(850, 45), new Vector2(.5f, 1));
             nextFill = UIFactory.CreateImage(transform, "NextColor", ColorPalette.Get(GameColor.Blue), new Vector2(0, -310), new Vector2(365, 68), new Vector2(.5f, 1));
-            next = UIFactory.CreateText(nextFill.transform, "Label", "", 27, ColorPalette.UiText, Vector2.zero, new Vector2(345, 60));
+            next = UIFactory.CreateText(nextFill.transform, "Label", "", 32, ColorPalette.UiText, Vector2.zero, new Vector2(345, 60));
             UIFactory.CreateImage(transform, "StackCard", new Color(1, 1, 1, .94f), new Vector2(190, 90), new Vector2(315, 90), new Vector2(0, 0));
             stack = UIFactory.CreateText(transform, "Stack", "", 31, ColorPalette.UiText, new Vector2(190, 90), new Vector2(300, 75), new Vector2(0, 0));
             tutorialCard = UIFactory.CreateImage(transform, "TutorialCard", new Color(1, 1, 1, .94f), new Vector2(0, -400), new Vector2(950, 105), new Vector2(.5f, 1)).gameObject;
@@ -39,7 +40,7 @@ namespace ColorStackRush
             {
                 var card = UIFactory.CreateImage(transform, "Power" + i, Color.white, new Vector2(-195, 85 + i * 76), new Vector2(315, 65), new Vector2(1, 0));
                 powerCards[i] = card.gameObject;
-                powerLabels[i] = UIFactory.CreateText(card.transform, "Label", "", 24, ColorPalette.UiText, Vector2.zero, new Vector2(300, 58));
+                powerLabels[i] = UIFactory.CreateText(card.transform, "Label", "", 32, ColorPalette.UiText, Vector2.zero, new Vector2(300, 58));
                 card.gameObject.SetActive(false);
             }
             Sync();

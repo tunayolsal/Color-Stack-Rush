@@ -47,7 +47,9 @@ namespace ColorStackRush.Tests
         }
         static void ValidateRun(RunConfig c, int count, TrackSegment a, TrackSegment b)
         {
-            for (int i = 0; i < count; i++)
+            var course = TrackPlanner.CreateCourse(c);
+            Assert.That(TrackValidator.ValidateCourse(course, out string error), Is.True, $"level {c.levelId}: {error}");
+            for (int i = 0; i < course.SegmentCount; i++)
             {
                 TrackPlanner.Fill(c, i, a); TrackPlanner.Fill(c, i, b);
                 Assert.That(TrackValidator.Validate(a, TrackPlanner.SafeX(c, i - 1), c.MaxSpeed), Is.True, $"seed {c.seed} segment {i}");

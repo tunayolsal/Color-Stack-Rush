@@ -47,7 +47,7 @@ namespace ColorStackRush
 
     public static class LevelCatalog
     {
-        public const int CurrentContentVersion = 1;
+        public const int CurrentContentVersion = 2;
         public static uint Hash(uint value)
         {
             unchecked
