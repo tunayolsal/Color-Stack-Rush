@@ -78,7 +78,7 @@ public static class ReleaseBuilder
         if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.WebGL, BuildTarget.WebGL))
             throw new InvalidOperationException("Install Web Build Support for Unity 6000.3.3f1.");
         Prepare();
-        PlayerSettings.bundleVersion = "0.4.1";
+        PlayerSettings.bundleVersion = "0.4.2";
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.WebGL, ScriptingImplementation.IL2CPP);
         PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.WebGL, ManagedStrippingLevel.Minimal);
         PlayerSettings.WebGL.template = "PROJECT:ColorStackRush";

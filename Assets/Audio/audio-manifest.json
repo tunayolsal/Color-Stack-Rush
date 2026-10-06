@@ -1,22 +1,27 @@
 {
   "schemaVersion": 1,
-  "verifiedDate": "2026-10-06",
+  "verifiedDate": "2026-10-07",
   "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-  "totalBytes": 386042.0,
+  "totalBytes": 12805456.0,
   "files": [
     {
-      "role": "HappyClappyLoop",
-      "file": "Assets/Audio/Resources/Audio/HappyClappyLoop.ogg",
-      "sourceFile": "HappyClappyLoop.wav",
-      "sourcePage": "https://opengameart.org/content/happy-clappy-loop",
-      "author": "OwlishMedia",
+      "role": "ArcadeGrooveLoop",
+      "file": "Assets/Audio/Resources/Audio/ArcadeGrooveLoop.wav",
+      "sourceFile": "space_ranger_seamless_loop.wav",
+      "sourcePage": "https://opengameart.org/content/music-loop-strong-downtempo-seamless",
+      "author": "Nostromo",
       "license": "CC0-1.0",
-      "bytes": 289690,
-      "sha256": "ba64fe792c3757de7d5c2aa66931fdaa891c3c18788cfbfd917f1bc980ec857d",
-      "durationSeconds": 17.440635,
+      "bytes": 12709104,
+      "sha256": "ce6bfc9c7372977d95b309cfe5a13919dfa69bbc99043b98316f9c92030c71e9",
+      "durationSeconds": 72.04643990929705,
       "sourceSampleRate": 44100,
       "sourceChannels": 2,
-      "transformation": "FFmpeg Vorbis q3, stereo 44.1 kHz; 5 ms linear fade at each loop edge, unchanged 769132 sample frames / 17.440635 s"
+      "musicalDurationSeconds": 72.0,
+      "guardFrames": 2048,
+      "loopStartFrame": 2048,
+      "loopEndFrameInclusive": 3177247,
+      "sourceSha256": "b7af8f7ca80958bcc79cb49faac128cd85093e484b8a42e661c2cda623a6521c",
+      "transformation": "Original musical PCM preserved byte for byte; 2048-frame encoder guard and forward WAV smpl loop added using tools/audio/prepare_music_loop.py"
     },
     {
       "role": "Collect",
